@@ -1,27 +1,48 @@
 # Skylive Cinema
 
-Skylive Cinema is a private watch-party stack composed of a Next.js frontend, an Express/Socket.IO backend, and a shared TypeScript package. The code in this repository is provided strictly for the owner’s deployment and maintenance workflows.
+> Private watch-party infrastructure maintained for first-party deployments only.
 
-## Repository Layout (for reference only)
+## Overview
 
-- `frontend/` – user-facing Next.js 16 application destined for Vercel.
-- `backend/` – API and signaling service written in TypeScript for Render.
-- `packages/shared/` – shared DTOs and utilities reused by both layers.
+- Browser-native co-watching with synchronized playback, reactions, and whiteboard tools.
+- Next.js 16 frontend paired with an Express and Socket.IO signaling layer.
+- Shared TypeScript contracts that keep the API, WebRTC flows, and UI in lockstep.
 
-## Configuration Notes
+## Architecture at a Glance
 
-- Runtime secrets (database URIs, JWT keys, etc.) **must stay outside version control**. Use the `.env.example` files in `backend/` and `frontend/` as templates and store the real values privately.
-- Production deployments are manually provisioned on Render (backend) and Vercel (frontend). This repository deliberately omits a turnkey deployment script to deter unauthorized replication.
-- When domains or infrastructure change, ensure CORS origins, cookie security flags, and Socket.IO endpoints are updated accordingly.
+| Layer | Stack | Purpose |
+| --- | --- | --- |
+| Frontend | Next.js 16, React Server Components, Tailwind CSS | Hosts the cinematic client experience served via Vercel. |
+| Backend | Express, Socket.IO, MongoDB | Provides REST+WebSocket APIs, auth, analytics, and TURN orchestration for Render. |
+| Shared | TypeScript package, Zod schemas | Centralizes DTOs, validation, and constants across services. |
+
+Repository layout for reference:
+
+- `frontend/` – public-facing application, including shared UI primitives and hooks.
+- `backend/` – API surface, signaling server, and background tasks.
+- `packages/shared/` – versioned types and utilities consumed by both runtimes.
+
+## Environment & Security
+
+- Real secrets (JWT keys, TURN credentials, database URIs) **must never** enter version control. Use the provided `.env.example` files and keep live values in private vaults.
+- Production deployments are manually provisioned on Render (backend) and Vercel (frontend); no automated scripts are provided intentionally.
+- Update CORS origins, secure cookies, and Socket.IO endpoints whenever domains or infrastructure shift.
+- Run the backend with hardened TLS termination and monitor TURN usage to prevent abuse.
+
+## Operational Guidelines
+
+- Follow internal runbooks for scaling, log redaction, and incident response. Never expose customer content in debug logs or analytics exports.
+- Run health checks (`pnpm lint`, `pnpm test`, targeted load sweeps) before shipping major changes to avoid regressions in session stability.
+- Archived builds and release artifacts should remain within controlled storage; do not mirror binaries publicly.
 
 ## Compliance & Enforcement
 
-- Skylive Cinema assets, copy, and source code are protected under copyright. Unauthorized redistribution, resale, or re-hosting is expressly prohibited.
-- Attempts to clone, white-label, or derive competing services without written approval will trigger removal notices, DMCA complaints, and suspension requests with hosting/CDN providers. Damages will be pursued when necessary.
-- Trafficking the brand identity (logos, UI, marketing copy) or using the codebase to impersonate Skylive is a policy violation and may incur contractual penalties in addition to statutory damages.
-- Contributors must comply with internal policies and applicable laws. Violations—such as harvesting user data, bypassing access controls, or modifying safeguards—can result in immediate access revocation, account termination, and legal action.
+- All Skylive Cinema assets, code, and copy are protected by copyright. Unauthorized redistribution, resale, or re-hosting is forbidden.
+- Attempts to clone, white-label, or derive competing services without written approval will trigger removal notices, DMCA complaints, and service suspensions. Damages may be pursued when warranted.
+- Impersonating Skylive through logos, UI, or communications violates platform policy and can incur contractual penalties in addition to statutory remedies.
+- Personnel must adhere to internal policies and applicable laws. Improper data harvesting, access control bypasses, or safeguard tampering can result in immediate access revocation and legal escalation.
 
-## Reporting & Support
+## Collaboration & Contact
 
-Operational issues or suspected abuse should be reported through the private support channels documented internally. Do not disclose sensitive incident details in public trackers.
-# skylive
+- Strategic partnerships, security disclosures, and collaboration requests: `skylivecinema@gmail.com`.
+- Operational issues or suspected abuse should continue through private support channels documented internally. Avoid sharing sensitive incident details in public trackers.
