@@ -1,0 +1,27 @@
+# Environment configuration and secrets
+.env
+.env.*
+*.env
+*.env.*
+backend/.env
+backend/.env.*
+frontend/.env
+frontend/.env.*
+packages/**/.env
+packages/**/.env.*
+
+# Local credentials and keys
+*.pem
+*.key
+*.crt
+*.pfx
+
+# Runtime uploads and caches
+backend/uploads/
+**/node_modules/
+**/dist/
+**/tmp/
+**/.cache/
+
+# Internal instructions/configuration that should never be published
+.github/copilot-instructions.md
