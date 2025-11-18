@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import type { Server as HTTPServer } from "http";
 import { Server } from "socket.io";
 import type { Socket } from "socket.io";
-import {
+import type {
   SignalingEvent,
   HeartbeatPayload,
   ChatMessage,
@@ -17,6 +17,7 @@ import {
   WhiteboardTogglePayload,
   WhiteboardClearPayload,
   WhiteboardStrokePayload,
+  WhiteboardPoint,
   ReactionEvent,
   ReactionSendPayload
 } from "@skylive/shared";
@@ -580,7 +581,7 @@ function toWhiteboardSnapshot(roomId: string, state: MutableWhiteboardState): Wh
     active: state.active,
     strokes: state.strokes.map((stroke) => ({
       ...stroke,
-      points: stroke.points.map((point) => ({ ...point }))
+      points: stroke.points.map((point: WhiteboardPoint) => ({ ...point }))
     })),
     revision: state.revision,
     updatedAt: state.updatedAt,

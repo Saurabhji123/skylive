@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import type {
   RoomSummary,
+  RoomSettings,
   ScreenShareState,
   ChatMessage,
   DeviceInfoPayload,
@@ -33,6 +34,12 @@ export interface UserDocument {
 
 export interface RoomDocument extends RoomSummary {
   _id: ObjectId;
+  hostId: string;
+  status: RoomSummary["status"];
+  settings: RoomSettings;
+  sessionCount: number;
+  endedAt?: string | undefined;
+  activeRtcSessionId?: string | undefined;
   passwordHash?: string;
   guestIds: string[];
   presence?: PresenceRecord[] | undefined;
