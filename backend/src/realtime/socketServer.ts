@@ -598,13 +598,18 @@ function normalizeStroke(input: WhiteboardStroke | undefined, roomId: string, us
     ? (input.points as WhiteboardStroke["points"])
     : [];
   const points = sourcePoints
-    .map((point) => ({
+    .map((point: WhiteboardStroke["points"][number]) => ({
       x: clamp(typeof point?.x === "number" ? point.x : 0, 0, 1),
       y: clamp(typeof point?.y === "number" ? point.y : 0, 0, 1),
       pressure: typeof point?.pressure === "number" && Number.isFinite(point.pressure) ? clamp(point.pressure, 0, 1) : undefined,
       t: typeof point?.t === "number" && Number.isFinite(point.t) ? point.t : undefined
     }))
-    .filter((point, index, array) => {
+    .filter(
+      (
+        point: WhiteboardStroke["points"][number],
+        index: number,
+        array: WhiteboardStroke["points"]
+      ) => {
       if (index === 0) {
         return true;
       }
@@ -613,7 +618,8 @@ function normalizeStroke(input: WhiteboardStroke | undefined, roomId: string, us
         return true;
       }
       return point.x !== previous.x || point.y !== previous.y;
-    });
+      }
+    );
 
   return {
     id,
