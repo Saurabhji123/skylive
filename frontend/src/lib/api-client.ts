@@ -72,7 +72,18 @@ export async function refreshAccessToken(): Promise<boolean> {
     return refreshPromise;
   }
 
+  const initialState = useSessionStore.getState();
+  const hadSession = Boolean(initialState.accessToken || initialState.userId || initialState.role);
+
   refreshPromise = (async () => {
+    const setExpired = (expired: boolean) => {
+      if (expired && !hadSession) {
+        useSessionStore.getState().setSessionExpired(false);
+        return;
+      }
+      useSessionStore.getState().setSessionExpired(expired);
+    };
+
     try {
       const response = await fetch(buildApiUrl("/auth/refresh"), {
         method: "POST",
@@ -84,27 +95,24 @@ export async function refreshAccessToken(): Promise<boolean> {
       });
 
       if (!response.ok) {
-        useSessionStore.getState().setSessionExpired(true);
+        setExpired(true);
         return false;
       }
 
       const payload = (await response.json()) as ApiSuccess<{ accessToken: string; userId: string; role: Role }> | ApiError;
       if (!payload || payload.success !== true) {
-        useSessionStore.getState().setSessionExpired(true);
+        setExpired(true);
         return false;
       }
 
       useSessionStore.getState().updateAccessToken(payload.data.accessToken, payload.data.userId, payload.data.role);
+      setExpired(false);
       return true;
     } catch (error) {
       clientLog("error", "Token refresh attempt failed", error);
+      setExpired(hadSession);
       return false;
     } finally {
-      if (!useSessionStore.getState().accessToken) {
-        useSessionStore.getState().setSessionExpired(true);
-      } else {
-        useSessionStore.getState().setSessionExpired(false);
-      }
       refreshPromise = null;
     }
   })();

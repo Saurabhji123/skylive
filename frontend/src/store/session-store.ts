@@ -60,14 +60,27 @@ export const useSessionStore = create<SessionState>()(
           sessionExpired: false
         }),
       markSessionExpired: () =>
-        set({
-          userId: undefined,
-          displayName: undefined,
-          avatarUrl: undefined,
-          avatar: undefined,
-          role: undefined,
-          accessToken: undefined,
-          sessionExpired: true
+        set((state) => {
+          const hadSession = Boolean(state.userId || state.accessToken || state.role);
+          if (!hadSession) {
+            return {
+              ...state,
+              sessionExpired: false,
+              accessToken: undefined,
+              userId: undefined,
+              role: undefined
+            };
+          }
+
+          return {
+            userId: undefined,
+            displayName: undefined,
+            avatarUrl: undefined,
+            avatar: undefined,
+            role: undefined,
+            accessToken: undefined,
+            sessionExpired: true
+          };
         }),
       setSessionExpired: (expired) => set((state) => ({ ...state, sessionExpired: expired })),
       updateAccessToken: (accessToken, userId, role) =>

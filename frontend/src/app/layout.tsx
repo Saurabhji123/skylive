@@ -26,7 +26,10 @@ const monoFont = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "SKYLIVE CINEMA",
   description: "Share your screen and watch together in a cinematic co-watching lounge.",
-  icons: [{ rel: "icon", url: "/favicon.ico" }]
+  icons: [
+    { rel: "icon", url: "/favicon.svg", type: "image/svg+xml" },
+    { rel: "alternate icon", url: "/favicon.ico" }
+  ]
 };
 
 export const viewport: Viewport = {
