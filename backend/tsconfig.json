@@ -13,17 +13,8 @@
     "moduleResolution": "node",
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
-    "baseUrl": ".",
-    "paths": {
-      "@skylive/shared": ["../packages/shared/dist/index"],
-      "@skylive/shared/*": ["../packages/shared/dist/*"]
-    }
+    "baseUrl": "."
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"],
-  "references": [
-    {
-      "path": "../packages/shared"
-    }
-  ]
+  "exclude": ["node_modules", "dist"]
 }
