@@ -19,7 +19,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@skylive/shared": ["../packages/shared/src/index.ts"],
+      "@skylive/shared/*": ["../packages/shared/src/*"]
     }
   },
   "include": [
