@@ -12,7 +12,12 @@
     "declarationMap": true,
     "moduleResolution": "node",
     "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true
+    "exactOptionalPropertyTypes": true,
+    "baseUrl": ".",
+    "paths": {
+      "@skylive/shared": ["../packages/shared/src/index"],
+      "@skylive/shared/*": ["../packages/shared/src/*"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"],
