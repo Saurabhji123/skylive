@@ -1,6 +1,6 @@
 import { ObjectId } from "mongodb";
 import type { AnalyticsDocument, LogDocument } from "../types";
-import type { AnalyticsPayload } from "@skylive/shared";
+import { AnalyticsPayload } from "@skylive/shared";
 import { getDb } from "../db/connection";
 import { COLLECTIONS } from "../db/collections";
 

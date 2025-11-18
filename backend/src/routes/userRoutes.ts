@@ -5,7 +5,7 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { sendSuccess } from "../utils/responses";
 import { requireAuth, AuthenticatedRequest } from "../middleware/authMiddleware";
 import { badRequest } from "../utils/errors";
-import type { UserPreferences } from "@skylive/shared";
+import { UserPreferences } from "@skylive/shared";
 import {
   getUserProfile,
   updateUserProfile,

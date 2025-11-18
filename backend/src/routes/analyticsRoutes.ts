@@ -3,7 +3,7 @@ import { z } from "zod";
 import { asyncHandler } from "../utils/asyncHandler";
 import { sendSuccess } from "../utils/responses";
 import { recordAnalytics, recordLog } from "../services/analyticsService";
-import type { AnalyticsPayload } from "@skylive/shared";
+import { AnalyticsPayload } from "@skylive/shared";
 
 const analyticsSchema = z.object({
   roomId: z.string(),

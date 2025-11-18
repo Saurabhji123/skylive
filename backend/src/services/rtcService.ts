@@ -5,7 +5,7 @@ import type {
   RtcSessionDocument,
   ScreenShareSessionDocument
 } from "../types";
-import type { ScreenShareState, HeartbeatPayload } from "@skylive/shared";
+import { ScreenShareState, HeartbeatPayload } from "@skylive/shared";
 
 export async function startRtcSession(roomId: string, peerIds: string[], iceServers: string[]): Promise<string> {
   const db = await getDb();

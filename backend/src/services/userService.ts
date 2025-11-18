@@ -1,5 +1,5 @@
 import { ObjectId } from "mongodb";
-import type { UserProfile, UserPreferences } from "@skylive/shared";
+import { UserProfile, UserPreferences } from "@skylive/shared";
 import { getDb } from "../db/connection";
 import { COLLECTIONS } from "../db/collections";
 import { notFound } from "../utils/errors";

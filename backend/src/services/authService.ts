@@ -5,7 +5,7 @@ import { hashPassword, comparePassword } from "../utils/password";
 import { signAccessToken, signRefreshToken } from "../utils/tokens";
 import { badRequest, unauthorized } from "../utils/errors";
 import type { UserDocument, RefreshTokenDocument } from "../types";
-import type { AvatarAsset } from "@skylive/shared";
+import { AvatarAsset } from "@skylive/shared";
 import { DEFAULT_TIMEZONE, getDefaultUserPreferences } from "./userService";
 
 interface RegisterParams {

@@ -16,7 +16,7 @@ import {
   CreateRoomParams
 } from "../services/roomService";
 import { badRequest } from "../utils/errors";
-import type { RoomSummary, RoomStats } from "@skylive/shared";
+import { RoomSummary, RoomStats } from "@skylive/shared";
 
 const createRoomSchema = z.object({
   name: z.string().min(2),

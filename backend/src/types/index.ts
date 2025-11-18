@@ -1,5 +1,5 @@
 import { ObjectId } from "mongodb";
-import type {
+import {
   RoomSummary,
   RoomSettings,
   ScreenShareState,

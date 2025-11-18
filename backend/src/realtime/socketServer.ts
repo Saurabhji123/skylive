@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import type { Server as HTTPServer } from "http";
 import { Server } from "socket.io";
 import type { Socket } from "socket.io";
-import type {
+import {
   SignalingEvent,
   HeartbeatPayload,
   ChatMessage,

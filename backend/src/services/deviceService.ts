@@ -1,7 +1,7 @@
 import type { DeviceInfoDocument } from "../types";
 import { COLLECTIONS } from "../db/collections";
 import { getDb } from "../db/connection";
-import type { DeviceInfoPayload } from "@skylive/shared";
+import { DeviceInfoPayload } from "@skylive/shared";
 
 export async function upsertDeviceInfo(payload: DeviceInfoPayload): Promise<void> {
   const db = await getDb();

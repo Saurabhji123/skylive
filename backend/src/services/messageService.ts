@@ -2,7 +2,7 @@ import { ObjectId } from "mongodb";
 import type { MessageDocument } from "../types";
 import { COLLECTIONS } from "../db/collections";
 import { getDb } from "../db/connection";
-import type { ChatMessage } from "@skylive/shared";
+import { ChatMessage } from "@skylive/shared";
 
 export async function persistMessage(message: ChatMessage): Promise<void> {
   const db = await getDb();
