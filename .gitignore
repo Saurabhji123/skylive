@@ -22,6 +22,7 @@ backend/uploads/
 **/dist/
 **/tmp/
 **/.cache/
+**/*.tsbuildinfo
 
 # Internal instructions/configuration that should never be published
 .github/copilot-instructions.md

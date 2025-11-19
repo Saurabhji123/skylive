@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@skylive/shared": ["../packages/shared/dist/index"],
+      "@skylive/shared/*": ["../packages/shared/dist/*"]
+    }
+  }
+}

@@ -1,0 +1,19 @@
+# ignore dependencies and build artifacts
+node_modules
+**/node_modules
+
+# git and editor state
+.git
+.gitignore
+.vscode
+
+# compiled outputs
+**/dist
+**/build
+**/*.tsbuildinfo
+
+# misc
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
