@@ -11,5 +11,6 @@ export const API_BASE_URL = (() => {
   return "";
 })();
 
-export const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
-export const GOOGLE_AUTH_ENABLED = Boolean(GOOGLE_CLIENT_ID);
+const rawGoogleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? process.env.GOOGLE_CLIENT_ID ?? "";
+export const GOOGLE_CLIENT_ID = rawGoogleClientId.trim();
+export const GOOGLE_AUTH_ENABLED = GOOGLE_CLIENT_ID.length > 0;
