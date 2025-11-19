@@ -192,7 +192,8 @@ export async function authenticateWithGoogle(
     }
 
     const email = payload.email.toLowerCase();
-    const displayName = payload.name?.trim() || email.split("@")[0];
+    const normalizedProfileName = payload.name?.trim();
+    const displayName = normalizedProfileName && normalizedProfileName.length > 0 ? normalizedProfileName : email.split("@")[0];
     const pictureUrl = typeof payload.picture === "string" && payload.picture.length > 0 ? payload.picture : undefined;
     const now = new Date();
 
@@ -259,7 +260,9 @@ export async function authenticateWithGoogle(
     }
 
     const tokensWithIds = await issueTokens(user._id.toHexString(), "host");
-    return buildAuthResponse(user, tokensWithIds, user.displayName ?? displayName, pictureUrl);
+    const resolvedDisplayName =
+      typeof user.displayName === "string" && user.displayName.trim().length > 0 ? user.displayName : displayName;
+    return buildAuthResponse(user, tokensWithIds, resolvedDisplayName, pictureUrl);
   } catch (error) {
     if (error instanceof Error && error.message === "Account already linked to a different Google profile") {
       throw error;

@@ -12,3 +12,4 @@ export const API_BASE_URL = (() => {
 })();
 
 export const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
+export const GOOGLE_AUTH_ENABLED = Boolean(GOOGLE_CLIENT_ID);

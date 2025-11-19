@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api-client";
+import { GOOGLE_AUTH_ENABLED } from "@/lib/config";
 import { useSessionStore } from "@/store/session-store";
 import { useSession } from "@/hooks/useSession";
 import type { AuthSessionPayload } from "@/types/auth";
@@ -212,26 +213,28 @@ function RegisterPageContent() {
             Continue to Skylive
           </Button>
         </form>
-        <div className="space-y-4">
-          <div className="flex items-center gap-4 text-white/50">
-            <span className="h-px flex-1 bg-white/20" />
-            <span className="text-xs uppercase tracking-[0.3em]">or</span>
-            <span className="h-px flex-1 bg-white/20" />
+        {GOOGLE_AUTH_ENABLED ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-4 text-white/50">
+              <span className="h-px flex-1 bg-white/20" />
+              <span className="text-xs uppercase tracking-[0.3em]">or</span>
+              <span className="h-px flex-1 bg-white/20" />
+            </div>
+            <Button
+              type="button"
+              size="lg"
+              variant="contrast"
+              className="w-full gap-3 bg-white text-black hover:bg-white/90 border border-black/10"
+              onClick={() => startGoogleRegistration()}
+              isLoading={isGoogleLoading}
+              loadingText="Connecting..."
+              disabled={isLoading || isGoogleLoading}
+            >
+              <GoogleIcon />
+              Continue with Google
+            </Button>
           </div>
-          <Button
-            type="button"
-            size="lg"
-            variant="contrast"
-            className="w-full gap-3 bg-white text-black hover:bg-white/90 border border-black/10"
-            onClick={() => startGoogleRegistration()}
-            isLoading={isGoogleLoading}
-            loadingText="Connecting..."
-            disabled={isLoading || isGoogleLoading}
-          >
-            <GoogleIcon />
-            Continue with Google
-          </Button>
-        </div>
+        ) : null}
         <p className="text-center text-sm text-white/70">
           Already have an account?{" "}
           <Link href="/auth/login" className="text-skylive-cyan hover:text-white">
