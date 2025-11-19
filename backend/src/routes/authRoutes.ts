@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type CookieOptions } from "express";
 import { z } from "zod";
 import { asyncHandler } from "../utils/asyncHandler";
 import { sendSuccess } from "../utils/responses";
@@ -32,18 +32,21 @@ const googleAuthSchema = z.object({
 
 export const authRouter = Router();
 
+const REFRESH_COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const refreshCookieOptions: CookieOptions = {
+  httpOnly: true,
+  secure: env.COOKIE_SECURE,
+  sameSite: env.COOKIE_SECURE ? "none" : "lax",
+  maxAge: REFRESH_COOKIE_MAX_AGE_MS
+};
+
 authRouter.post(
   "/register",
   asyncHandler(async (req, res) => {
     const body = registerSchema.parse(req.body);
     const tokens = await registerUser(body);
 
-    res.cookie(env.COOKIE_NAME_REFRESH, tokens.refreshToken, {
-      httpOnly: true,
-      secure: env.COOKIE_SECURE,
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    });
+    res.cookie(env.COOKIE_NAME_REFRESH, tokens.refreshToken, refreshCookieOptions);
 
     sendSuccess(res, {
       userId: tokens.userId,
@@ -62,12 +65,7 @@ authRouter.post(
     const body = loginSchema.parse(req.body);
     const result = await loginUser(body);
 
-    res.cookie(env.COOKIE_NAME_REFRESH, result.refreshToken, {
-      httpOnly: true,
-      secure: env.COOKIE_SECURE,
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    });
+    res.cookie(env.COOKIE_NAME_REFRESH, result.refreshToken, refreshCookieOptions);
 
     sendSuccess(res, {
       userId: result.userId,
@@ -86,12 +84,7 @@ authRouter.post(
     const { code } = googleAuthSchema.parse(req.body);
     const result = await authenticateWithGoogle(code);
 
-    res.cookie(env.COOKIE_NAME_REFRESH, result.refreshToken, {
-      httpOnly: true,
-      secure: env.COOKIE_SECURE,
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    });
+    res.cookie(env.COOKIE_NAME_REFRESH, result.refreshToken, refreshCookieOptions);
 
     sendSuccess(res, {
       userId: result.userId,
@@ -149,12 +142,7 @@ authRouter.post(
     refreshSchema.parse({ refreshToken });
     const tokens = await rotateTokens(refreshToken);
 
-    res.cookie(env.COOKIE_NAME_REFRESH, tokens.refreshToken, {
-      httpOnly: true,
-      secure: env.COOKIE_SECURE,
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    });
+    res.cookie(env.COOKIE_NAME_REFRESH, tokens.refreshToken, refreshCookieOptions);
 
     sendSuccess(res, {
       userId: tokens.userId,
@@ -179,7 +167,11 @@ authRouter.post(
       await revokeRefreshToken(refreshToken);
     }
 
-    res.clearCookie(env.COOKIE_NAME_REFRESH);
+    res.clearCookie(env.COOKIE_NAME_REFRESH, {
+      httpOnly: true,
+      secure: env.COOKIE_SECURE,
+      sameSite: env.COOKIE_SECURE ? "none" : "lax"
+    });
     sendSuccess(res, { success: true });
   })
 );
