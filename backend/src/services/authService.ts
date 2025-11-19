@@ -1,4 +1,6 @@
 import { createHash } from "crypto";
+import { ObjectId } from "mongodb";
+import { OAuth2Client } from "google-auth-library";
 import { getDb } from "../db/connection";
 import { COLLECTIONS } from "../db/collections";
 import { hashPassword, comparePassword } from "../utils/password";
@@ -7,6 +9,7 @@ import { badRequest, unauthorized } from "../utils/errors";
 import type { UserDocument, RefreshTokenDocument } from "../types";
 import { AvatarAsset } from "@skylive/shared";
 import { DEFAULT_TIMEZONE, getDefaultUserPreferences } from "./userService";
+import { env } from "../config/env";
 
 interface RegisterParams {
   email: string;
@@ -26,6 +29,54 @@ interface TokenPair {
 
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
+}
+
+const googleOAuthClient = env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
+  ? new OAuth2Client(env.GOOGLE_CLIENT_ID, env.GOOGLE_CLIENT_SECRET, "postmessage")
+  : null;
+
+function buildAuthResponse(
+  user: UserDocument,
+  tokens: TokenPair & { userId: string; role: "host" | "guest" },
+  displayName: string,
+  fallbackAvatarUrl?: string
+): TokenPair & {
+  userId: string;
+  role: "host" | "guest";
+  displayName: string;
+  avatarUrl?: string;
+  avatar?: AvatarAsset;
+} {
+  const response: TokenPair & {
+    userId: string;
+    role: "host" | "guest";
+    displayName: string;
+    avatarUrl?: string;
+    avatar?: AvatarAsset;
+  } = {
+    displayName,
+    ...tokens
+  };
+
+  if (user.avatar) {
+    response.avatar = {
+      fileName: user.avatar.fileName,
+      originalName: user.avatar.originalName,
+      mimeType: user.avatar.mimeType,
+      byteSize: user.avatar.byteSize,
+      uploadedAt: user.avatar.uploadedAt instanceof Date
+        ? user.avatar.uploadedAt.toISOString()
+        : new Date(user.avatar.uploadedAt).toISOString(),
+      publicPath: user.avatar.publicPath
+    };
+    response.avatarUrl = response.avatar.publicPath;
+  } else if (typeof user.avatarUrl === "string" && user.avatarUrl.length > 0) {
+    response.avatarUrl = user.avatarUrl;
+  } else if (fallbackAvatarUrl) {
+    response.avatarUrl = fallbackAvatarUrl;
+  }
+
+  return response;
 }
 
 export async function registerUser(
@@ -85,6 +136,10 @@ export async function loginUser(
     throw unauthorized("Invalid credentials", "INVALID_CREDENTIALS");
   }
 
+  if (!user.passwordHash) {
+    throw unauthorized("This account uses Google Sign-In. Please continue with Google.", "PASSWORD_AUTH_DISABLED");
+  }
+
   const isValid = await comparePassword(params.password, user.passwordHash);
   if (!isValid) {
     throw unauthorized("Invalid credentials", "INVALID_CREDENTIALS");
@@ -93,34 +148,125 @@ export async function loginUser(
   await users.updateOne({ _id: user._id }, { $set: { lastLogin: new Date() } });
 
   const tokens = await issueTokens(user._id.toHexString(), "host");
-  const response: TokenPair & {
+  return buildAuthResponse(user, tokens, user.displayName);
+}
+
+export async function authenticateWithGoogle(
+  code: string
+): Promise<
+  TokenPair & {
     userId: string;
     role: "host" | "guest";
     displayName: string;
     avatarUrl?: string;
     avatar?: AvatarAsset;
-  } = {
-    displayName: user.displayName,
-    ...tokens
-  };
-
-  if (user.avatar) {
-    response.avatar = {
-      fileName: user.avatar.fileName,
-      originalName: user.avatar.originalName,
-      mimeType: user.avatar.mimeType,
-      byteSize: user.avatar.byteSize,
-      uploadedAt: user.avatar.uploadedAt instanceof Date
-        ? user.avatar.uploadedAt.toISOString()
-        : new Date(user.avatar.uploadedAt).toISOString(),
-      publicPath: user.avatar.publicPath
-    };
-    response.avatarUrl = response.avatar.publicPath;
-  } else if (typeof user.avatarUrl === "string" && user.avatarUrl.length > 0) {
-    response.avatarUrl = user.avatarUrl;
+  }
+> {
+  if (!googleOAuthClient || !env.GOOGLE_CLIENT_ID) {
+    throw badRequest("Google Sign-In is not configured", "GOOGLE_AUTH_NOT_CONFIGURED");
   }
 
-  return response;
+  try {
+    const { tokens } = await googleOAuthClient.getToken(code);
+    if (!tokens?.id_token) {
+      throw new Error("Missing id_token from Google response");
+    }
+
+    const ticket = await googleOAuthClient.verifyIdToken({
+      idToken: tokens.id_token,
+      audience: env.GOOGLE_CLIENT_ID
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload || !payload.email) {
+      throw new Error("Google account is missing an email address");
+    }
+
+    if (payload.email_verified === false) {
+      throw new Error("Google email is not verified");
+    }
+
+    const googleId = payload.sub;
+    if (!googleId) {
+      throw new Error("Google account identifier missing");
+    }
+
+    const email = payload.email.toLowerCase();
+    const displayName = payload.name?.trim() || email.split("@")[0];
+    const pictureUrl = typeof payload.picture === "string" && payload.picture.length > 0 ? payload.picture : undefined;
+    const now = new Date();
+
+    const db = await getDb();
+    const users = db.collection<UserDocument>(COLLECTIONS.USERS);
+
+    let user = await users.findOne({ $or: [{ googleId }, { email }] });
+
+    if (user && user.googleId && user.googleId !== googleId) {
+      throw unauthorized("Account already linked to a different Google profile", "GOOGLE_ACCOUNT_MISMATCH");
+    }
+
+    if (!user) {
+      const userId = new ObjectId();
+      const newUser: UserDocument = {
+        _id: userId,
+        email,
+        displayName,
+        avatarUrl: pictureUrl,
+        createdAt: now,
+        lastLogin: now,
+        preferences: getDefaultUserPreferences(),
+        bio: "",
+        timezone: DEFAULT_TIMEZONE,
+        googleId,
+        authProviders: {
+          google: {
+            id: googleId,
+            linkedAt: now,
+            email
+          }
+        }
+      };
+
+      await users.insertOne(newUser as unknown as UserDocument);
+      user = newUser;
+    } else {
+      const update: Partial<UserDocument> = {
+        lastLogin: now,
+        authProviders: {
+          ...user.authProviders,
+          google: {
+            id: googleId,
+            linkedAt: now,
+            email
+          }
+        }
+      };
+
+      if (!user.googleId) {
+        update.googleId = googleId;
+      }
+
+      if (!user.displayName && displayName) {
+        update.displayName = displayName;
+      }
+
+      if (pictureUrl && pictureUrl !== user.avatarUrl) {
+        update.avatarUrl = pictureUrl;
+      }
+
+      await users.updateOne({ _id: user._id }, { $set: update });
+      user = { ...user, ...update } as UserDocument;
+    }
+
+    const tokensWithIds = await issueTokens(user._id.toHexString(), "host");
+    return buildAuthResponse(user, tokensWithIds, user.displayName ?? displayName, pictureUrl);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Account already linked to a different Google profile") {
+      throw error;
+    }
+
+    throw unauthorized("Unable to authenticate with Google", "GOOGLE_AUTH_FAILED");
+  }
 }
 
 export async function rotateTokens(refreshToken: string): Promise<TokenPair & { userId: string; role: "host" | "guest" }> {

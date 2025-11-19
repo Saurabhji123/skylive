@@ -23,7 +23,9 @@ const envSchema = z.object({
   COOKIE_NAME_REFRESH: z.string().default("skylive_refresh"),
   COOKIE_SECURE: z.coerce.boolean().default(true),
   AVATAR_UPLOAD_ROOT: z.string().optional(),
-  AVATAR_PUBLIC_PATH: z.string().optional()
+  AVATAR_PUBLIC_PATH: z.string().optional(),
+  GOOGLE_CLIENT_ID: z.string().min(1).optional(),
+  GOOGLE_CLIENT_SECRET: z.string().min(1).optional()
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

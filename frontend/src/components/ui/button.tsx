@@ -12,6 +12,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
   size?: Size;
   isLoading?: boolean;
+  loadingText?: string;
 }
 
 const variantClasses: Record<Variant, string> = {
@@ -34,6 +35,7 @@ export function Button({
   size = "md",
   className,
   isLoading,
+  loadingText,
   children,
   disabled,
   ...props
@@ -50,9 +52,10 @@ export function Button({
         className
       )}
       disabled={disabled || isLoading}
+      aria-busy={isLoading ?? false}
       {...props}
     >
-      {isLoading ? "Loading..." : children}
+      {isLoading ? loadingText ?? "Loading..." : children}
     </motion.button>
   );
 }

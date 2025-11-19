@@ -179,8 +179,8 @@ export default function DashboardPage() {
           </div>
         </div>
         <p className="max-w-2xl text-white/60">
-          Manage your rooms, review past sessions, and monitor live network health. Your Render-hosted backend keeps the
-          signaling snappy while Vercel handles the cinematic experience.
+          Manage your rooms, review past sessions, and monitor live network health with Skylive orchestrating every stream
+          end to end.
         </p>
       </header>
 

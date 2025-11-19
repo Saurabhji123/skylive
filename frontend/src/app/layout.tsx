@@ -4,6 +4,7 @@ import "./globals.css";
 import { SessionExpiredDialog } from "@/components/ui/session-expired-dialog";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
+import { GoogleAuthProvider } from "@/providers/google-auth-provider";
 
 const headingFont = Poppins({
   weight: ["400", "500", "600", "700"],
@@ -44,14 +45,16 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${headingFont.variable} ${bodyFont.variable} ${monoFont.variable}`}>
       <body className="antialiased bg-transparent">
-        <div className="fixed inset-0 -z-10 bg-linear-to-br from-skylive-purple via-skylive-midnight to-black" />
-        <div className="fixed inset-0 -z-10 opacity-40" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, rgba(51,224,255,0.25), transparent 45%)" }} />
-        <SessionExpiredDialog />
-        <Navbar />
-        <main className="min-h-screen pt-24 text-white">
-          {children}
-        </main>
-        <Footer />
+        <GoogleAuthProvider>
+          <div className="fixed inset-0 -z-10 bg-linear-to-br from-skylive-purple via-skylive-midnight to-black" />
+          <div className="fixed inset-0 -z-10 opacity-40" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, rgba(51,224,255,0.25), transparent 45%)" }} />
+          <SessionExpiredDialog />
+          <Navbar />
+          <main className="min-h-screen pt-24 text-white">
+            {children}
+          </main>
+          <Footer />
+        </GoogleAuthProvider>
       </body>
     </html>
   );

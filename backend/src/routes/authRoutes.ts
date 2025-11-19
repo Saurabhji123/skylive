@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { asyncHandler } from "../utils/asyncHandler";
 import { sendSuccess } from "../utils/responses";
-import { registerUser, loginUser, rotateTokens, revokeRefreshToken } from "../services/authService";
+import { registerUser, loginUser, rotateTokens, revokeRefreshToken, authenticateWithGoogle } from "../services/authService";
 import { requestPasswordReset } from "../services/passwordResetService";
 import { env } from "../config/env";
 import { unauthorized } from "../utils/errors";
@@ -24,6 +24,10 @@ const refreshSchema = z.object({
 
 const forgotPasswordSchema = z.object({
   email: z.string().email()
+});
+
+const googleAuthSchema = z.object({
+  code: z.string().min(1)
 });
 
 export const authRouter = Router();
@@ -57,6 +61,30 @@ authRouter.post(
   asyncHandler(async (req, res) => {
     const body = loginSchema.parse(req.body);
     const result = await loginUser(body);
+
+    res.cookie(env.COOKIE_NAME_REFRESH, result.refreshToken, {
+      httpOnly: true,
+      secure: env.COOKIE_SECURE,
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+
+    sendSuccess(res, {
+      userId: result.userId,
+      displayName: result.displayName,
+      accessToken: result.accessToken,
+      role: result.role,
+      avatarUrl: result.avatarUrl,
+      avatar: result.avatar
+    });
+  })
+);
+
+authRouter.post(
+  "/google",
+  asyncHandler(async (req, res) => {
+    const { code } = googleAuthSchema.parse(req.body);
+    const result = await authenticateWithGoogle(code);
 
     res.cookie(env.COOKIE_NAME_REFRESH, result.refreshToken, {
       httpOnly: true,

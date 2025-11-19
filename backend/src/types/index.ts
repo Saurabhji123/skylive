@@ -21,7 +21,7 @@ export interface AvatarDocument {
 export interface UserDocument {
   _id: ObjectId;
   email: string;
-  passwordHash: string;
+  passwordHash?: string;
   displayName: string;
   avatarUrl?: string | undefined;
   avatar?: AvatarDocument | undefined;
@@ -30,6 +30,14 @@ export interface UserDocument {
   preferences?: UserPreferences | undefined;
   bio?: string | undefined;
   timezone?: string | undefined;
+  googleId?: string | undefined;
+  authProviders?: {
+    google?: {
+      id: string;
+      linkedAt: Date;
+      email: string;
+    };
+  };
 }
 
 export interface RoomDocument extends RoomSummary {

@@ -12,8 +12,8 @@
 
 | Layer | Stack | Purpose |
 | --- | --- | --- |
-| Frontend | Next.js 16, React Server Components, Tailwind CSS | Hosts the cinematic client experience served via Vercel. |
-| Backend | Express, Socket.IO, MongoDB | Provides REST+WebSocket APIs, auth, analytics, and TURN orchestration for Render. |
+| Frontend | Next.js 16, React Server Components, Tailwind CSS | Hosts the cinematic client experience for browser sessions. |
+| Backend | Express, Socket.IO, MongoDB | Provides REST+WebSocket APIs, auth, analytics, and TURN orchestration for your deployment targets. |
 | Shared | TypeScript package, Zod schemas | Centralizes DTOs, validation, and constants across services. |
 
 Repository layout for reference:
@@ -25,7 +25,7 @@ Repository layout for reference:
 ## Environment & Security
 
 - Real secrets (JWT keys, TURN credentials, database URIs) **must never** enter version control. Use the provided `.env.example` files and keep live values in private vaults.
-- Production deployments are manually provisioned on Render (backend) and Vercel (frontend); no automated scripts are provided intentionally.
+- Production deployments are provisioned manually per environment; no automated scripts are provided intentionally.
 - Update CORS origins, secure cookies, and Socket.IO endpoints whenever domains or infrastructure shift.
 - Run the backend with hardened TLS termination and monitor TURN usage to prevent abuse.
 
