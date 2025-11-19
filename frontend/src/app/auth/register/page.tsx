@@ -213,28 +213,31 @@ function RegisterPageContent() {
             Continue to Skylive
           </Button>
         </form>
-        {GOOGLE_AUTH_ENABLED ? (
-          <div className="space-y-4">
-            <div className="flex items-center gap-4 text-white/50">
-              <span className="h-px flex-1 bg-white/20" />
-              <span className="text-xs uppercase tracking-[0.3em]">or</span>
-              <span className="h-px flex-1 bg-white/20" />
-            </div>
-            <Button
-              type="button"
-              size="lg"
-              variant="contrast"
-              className="w-full gap-3 bg-white text-black hover:bg-white/90 border border-black/10"
-              onClick={() => startGoogleRegistration()}
-              isLoading={isGoogleLoading}
-              loadingText="Connecting..."
-              disabled={isLoading || isGoogleLoading}
-            >
-              <GoogleIcon />
-              Continue with Google
-            </Button>
+        <div className="space-y-4">
+          <div className="flex items-center gap-4 text-white/50">
+            <span className="h-px flex-1 bg-white/20" />
+            <span className="text-xs uppercase tracking-[0.3em]">or</span>
+            <span className="h-px flex-1 bg-white/20" />
           </div>
-        ) : null}
+          <Button
+            type="button"
+            size="lg"
+            variant="contrast"
+            className="w-full gap-3 bg-white text-black hover:bg-white/90 border border-black/10"
+            onClick={() => startGoogleRegistration()}
+            isLoading={isGoogleLoading}
+            loadingText="Connecting..."
+            disabled={!GOOGLE_AUTH_ENABLED || isLoading || isGoogleLoading}
+          >
+            <GoogleIcon />
+            Continue with Google
+          </Button>
+          {!GOOGLE_AUTH_ENABLED ? (
+            <p className="text-center text-xs text-white/50">
+              Google sign-up is disabled until deployment credentials are configured.
+            </p>
+          ) : null}
+        </div>
         <p className="text-center text-sm text-white/70">
           Already have an account?{" "}
           <Link href="/auth/login" className="text-skylive-cyan hover:text-white">
