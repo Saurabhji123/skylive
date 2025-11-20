@@ -121,18 +121,21 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
 
       // Check if this request is still valid (user might have clicked multiple times)
       if (cameraRequestIdRef.current !== requestId) {
-        stopMediaStream(result.stream);
+        if (result.stream) {
+          stopMediaStream(result.stream);
+        }
         return;
       }
 
-      if (!result.success) {
-        throw new Error(result.error || "Unable to access the camera.");
+      // Handle failure cases
+      if (!result.success || !result.stream) {
+        setCameraReady(false);
+        const errorMessage = result.error || "Unable to access the camera.";
+        setError(errorMessage);
+        return;
       }
 
-      if (!result.stream) {
-        throw new Error("Camera stream not available.");
-      }
-
+      // Success - set up the camera stream
       cameraStreamRef.current = result.stream;
       setCameraStream(result.stream);
       setCameraReady(true);
@@ -155,8 +158,12 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
       setCameraReady(false);
       const message = err instanceof Error ? err.message : "Unable to access the camera.";
       setError(message);
-      stopStream(cameraStreamRef.current);
-      cameraStreamRef.current = null;
+      
+      // Clean up any existing stream
+      if (cameraStreamRef.current) {
+        stopStream(cameraStreamRef.current);
+        cameraStreamRef.current = null;
+      }
       setCameraStream(null);
     } finally {
       if (cameraRequestIdRef.current === requestId) {
@@ -186,19 +193,23 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
       const result = await requestMicrophoneAccess(10000);
 
       if (micRequestIdRef.current !== requestId) {
-        stopMediaStream(result.stream);
+        if (result.stream) {
+          stopMediaStream(result.stream);
+        }
         stopMicAnalyser();
         return;
       }
 
-      if (!result.success) {
-        throw new Error(result.error || "Unable to access the microphone.");
+      // Handle failure cases
+      if (!result.success || !result.stream) {
+        setMicReady(false);
+        const errorMessage = result.error || "Unable to access the microphone.";
+        setError(errorMessage);
+        stopMicAnalyser();
+        return;
       }
 
-      if (!result.stream) {
-        throw new Error("Microphone stream not available.");
-      }
-
+      // Success - set up the microphone stream
       micStreamRef.current = result.stream;
       setMicReady(true);
       setMicLevel(0.15);
@@ -234,8 +245,12 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
       setMicReady(false);
       const message = err instanceof Error ? err.message : "Unable to access the microphone.";
       setError(message);
-      stopStream(micStreamRef.current);
-      micStreamRef.current = null;
+      
+      // Clean up any existing stream
+      if (micStreamRef.current) {
+        stopStream(micStreamRef.current);
+        micStreamRef.current = null;
+      }
       setMicLevel(0);
       stopMicAnalyser();
     } finally {
@@ -267,18 +282,21 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
       const result = await requestScreenShareAccess(15000);
 
       if (screenRequestIdRef.current !== requestId) {
-        stopMediaStream(result.stream);
+        if (result.stream) {
+          stopMediaStream(result.stream);
+        }
         return;
       }
 
-      if (!result.success) {
-        throw new Error(result.error || "Unable to access screen share.");
+      // Handle failure cases
+      if (!result.success || !result.stream) {
+        setScreenReady(false);
+        const errorMessage = result.error || "Unable to access screen share.";
+        setError(errorMessage);
+        return;
       }
 
-      if (!result.stream) {
-        throw new Error("Screen share stream not available.");
-      }
-
+      // Success - set up the screen share stream
       screenStreamRef.current = result.stream;
       setScreenTestActive(true);
       setScreenReady(true);
@@ -287,9 +305,11 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
       const [track] = result.stream.getVideoTracks();
       if (track) {
         track.addEventListener("ended", () => {
-          stopStream(screenStreamRef.current);
-          screenStreamRef.current = null;
-          setScreenTestActive(false);
+          if (screenStreamRef.current === result.stream) {
+            stopStream(screenStreamRef.current);
+            screenStreamRef.current = null;
+            setScreenTestActive(false);
+          }
         });
       }
     } catch (err) {
@@ -299,6 +319,12 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
       const message = err instanceof Error ? err.message : "Screen share was blocked. Allow capture to continue.";
       setError(message);
       setScreenReady(false);
+      
+      // Clean up any existing stream
+      if (screenStreamRef.current) {
+        stopStream(screenStreamRef.current);
+        screenStreamRef.current = null;
+      }
     } finally {
       if (screenRequestIdRef.current === requestId) {
         setScreenBusy(false);
