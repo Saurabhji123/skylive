@@ -22,10 +22,11 @@ interface SocketProviderProps {
   rtcSessionId?: string;
   connect?: boolean;
   identity?: ConnectionIdentity;
+  onJoinError?: (error?: string) => void;
   children: React.ReactNode;
 }
 
-export function SocketProvider({ roomId, rtcSessionId, connect = true, identity, children }: SocketProviderProps) {
+export function SocketProvider({ roomId, rtcSessionId, connect = true, identity, onJoinError, children }: SocketProviderProps) {
   const { accessToken: sessionToken, userId: sessionUserId, displayName: sessionDisplayName } = useSessionStore();
   const effectiveUserId = identity?.userId ?? sessionUserId;
   const effectiveDisplayName = identity?.displayName ?? sessionDisplayName;
@@ -76,9 +77,11 @@ export function SocketProvider({ roomId, rtcSessionId, connect = true, identity,
         (ack?: { ok: boolean; error?: string }) => {
           joinInFlightRef.current = false;
           if (ack?.ok) {
+            onJoinError?.(undefined);
             setSocket(createdSocket);
           } else {
             clientLog("warn", "socket join rejected", ack?.error);
+            onJoinError?.(ack?.error ?? "JOIN_FAILED");
             createdSocket.disconnect();
           }
         }
@@ -104,7 +107,7 @@ export function SocketProvider({ roomId, rtcSessionId, connect = true, identity,
       joinInFlightRef.current = false;
       setSocket(null);
     };
-  }, [connect, effectiveDisplayName, effectiveToken, effectiveUserId, roomId, rtcSessionId]);
+  }, [connect, effectiveDisplayName, effectiveToken, effectiveUserId, onJoinError, roomId, rtcSessionId]);
 
   const value = useMemo(() => ({ socket }), [socket]);
 

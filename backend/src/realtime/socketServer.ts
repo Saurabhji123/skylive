@@ -62,6 +62,7 @@ const roomParticipants = new Map<string, Map<string, ParticipantSessionMeta>>();
 const roomPresenters = new Map<string, string>();
 const roomHosts = new Map<string, string>();
 const roomWhiteboards = new Map<string, MutableWhiteboardState>();
+const roomMetadata = new Map<string, RoomRuntimeMeta>();
 
 interface MutableWhiteboardState {
   active: boolean;
@@ -69,6 +70,11 @@ interface MutableWhiteboardState {
   revision: number;
   updatedAt: string;
   presenterUserId?: string;
+}
+
+interface RoomRuntimeMeta {
+  hostId: string;
+  maxGuests: number;
 }
 
 const WHITEBOARD_MAX_STROKES = 400;
@@ -118,11 +124,41 @@ export function createSocketServer(server: HTTPServer): Server {
 
       const reconnecting = Boolean(payload.reconnect);
 
-      const hostId = await ensureHostId(targetRoom);
+      const roomMeta = await ensureRoomMeta(targetRoom);
+      if (!roomMeta) {
+        const failure: JoinRoomAck = {
+          ok: false,
+          heartbeatGraceMs: HEARTBEAT_GRACE_MS,
+          error: "ROOM_NOT_FOUND"
+        };
+        if (callback) callback(failure);
+        socket.disconnect(true);
+        return;
+      }
+
+      const hostId = roomMeta.hostId;
       const participants = getParticipantMap(targetRoom);
       const existingParticipant = participants.get(userId);
       const joinedAt = existingParticipant?.joinedAt ?? new Date().toISOString();
       const displayName = meta.displayName ?? existingParticipant?.displayName ?? userId;
+
+      if (!existingParticipant) {
+        const isHostJoining = hostId === userId;
+        const maxGuests = roomMeta.maxGuests;
+        if (!isHostJoining && Number.isFinite(maxGuests)) {
+          const hostPresent = hostId ? participants.has(hostId) : false;
+          const activeGuests = participants.size - (hostPresent ? 1 : 0);
+          if (activeGuests >= maxGuests) {
+            const failure: JoinRoomAck = {
+              ok: false,
+              heartbeatGraceMs: HEARTBEAT_GRACE_MS,
+              error: "ROOM_AT_CAPACITY"
+            };
+            if (callback) callback(failure);
+            return;
+          }
+        }
+      }
       participants.set(userId, {
         userId,
         socketId: socket.id,
@@ -481,19 +517,35 @@ function getParticipantMap(roomId: string): Map<string, ParticipantSessionMeta> 
 }
 
 async function ensureHostId(roomId: string): Promise<string | null> {
-  const cached = roomHosts.get(roomId);
+  const meta = await ensureRoomMeta(roomId);
+  return meta?.hostId ?? null;
+}
+
+async function ensureRoomMeta(roomId: string): Promise<RoomRuntimeMeta | null> {
+  const cached = roomMetadata.get(roomId);
   if (cached) {
     return cached;
   }
 
   try {
     const room = await getRoomById(roomId);
+    const maxGuests = Math.max(1, room.settings?.maxParticipants ?? 2);
+    const meta: RoomRuntimeMeta = {
+      hostId: room.hostId,
+      maxGuests
+    };
+    roomMetadata.set(roomId, meta);
     roomHosts.set(roomId, room.hostId);
-    return room.hostId;
+    return meta;
   } catch (error) {
-    console.error("Failed to resolve host for room", { roomId, error });
+    console.error("Failed to resolve room metadata", { roomId, error });
     return null;
   }
+}
+
+function invalidateRoomMeta(roomId: string): void {
+  roomMetadata.delete(roomId);
+  roomHosts.delete(roomId);
 }
 
 function broadcastParticipants(io: Server, roomId: string): void {
@@ -526,6 +578,7 @@ function removeParticipant(roomId: string, userId: string): void {
     roomParticipants.delete(roomId);
     roomPresenters.delete(roomId);
     roomWhiteboards.delete(roomId);
+    invalidateRoomMeta(roomId);
     return;
   }
 

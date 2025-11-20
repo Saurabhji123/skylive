@@ -132,10 +132,6 @@ export async function joinRoom(params: JoinRoomParams): Promise<RoomDocument> {
     throw forbidden("Room has been suspended by the host", "ROOM_SUSPENDED");
   }
 
-  if (room.settings.maxParticipants <= room.guestIds.length + 1) {
-    throw forbidden("Room is full", "ROOM_FULL");
-  }
-
   if (room.passwordHash) {
     const providedHash = params.password ? hashPassword(params.password) : "";
     if (providedHash !== room.passwordHash) {

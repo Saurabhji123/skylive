@@ -348,7 +348,7 @@ export default function ProfilePage() {
         setIsUploadingAvatar(false);
       }
     },
-    [accessToken, setProfile]
+    [accessToken, computeAvatarRevision, setProfile]
   );
 
   const handleAvatarRemove = useCallback(() => {

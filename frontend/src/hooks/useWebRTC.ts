@@ -134,12 +134,14 @@ export function useWebRTC({ roomId, identity }: UseWebRTCOptions): UseWebRTCRetu
     void syncPermissionState("camera");
     void syncPermissionState("microphone");
 
+    const snapshot = permissionRefs.current;
+
     return () => {
-      if (permissionRefs.current.camera) {
-        permissionRefs.current.camera.onchange = null;
+      if (snapshot.camera) {
+        snapshot.camera.onchange = null;
       }
-      if (permissionRefs.current.microphone) {
-        permissionRefs.current.microphone.onchange = null;
+      if (snapshot.microphone) {
+        snapshot.microphone.onchange = null;
       }
     };
   }, [syncPermissionState]);

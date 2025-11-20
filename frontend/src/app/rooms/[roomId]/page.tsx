@@ -50,6 +50,11 @@ export default function RoomPage() {
   const [initialMessages, setInitialMessages] = useState<ChatMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<string | null>(null);
+  const [socketErrorState, setSocketErrorState] = useState<{ roomId: string | null; code: string | null }>({
+    roomId: null,
+    code: null
+  });
+  const socketError = socketErrorState.roomId === roomId ? socketErrorState.code : null;
   const { accessToken, displayName, userId, role } = useSessionStore();
   const username = displayName ?? queryName ?? "Guest";
   const router = useRouter();
@@ -145,16 +150,50 @@ export default function RoomPage() {
 
   const shouldConnectSocket = Boolean(room && room.status !== "ended" && room.status !== "suspended" && !error);
 
-  if (error) {
-    const heading = errorCode === "UNAUTHORIZED" ? "Authorization required" : "Unable to join room";
-    const actionLabel = errorCode === "UNAUTHORIZED" ? "Go to login" : "Return to dashboard";
+  if (error || socketError) {
+    const isUnauthorized = errorCode === "UNAUTHORIZED";
+    const isCapacityError = socketError === "ROOM_AT_CAPACITY";
+    const heading = error
+      ? isUnauthorized
+        ? "Authorization required"
+        : "Unable to join room"
+      : isCapacityError
+        ? "Room is full"
+        : "Unable to connect";
+    const detail = error
+      ? error
+      : isCapacityError
+        ? "This screening already has the maximum number of guests. Ask the host to free a seat or raise the limit."
+        : "We couldn’t connect you to this screening. Please retry in a moment.";
+    const primaryActionLabel = error
+      ? isUnauthorized
+        ? "Go to login"
+        : "Return to dashboard"
+      : "Retry join";
+    const showSecondaryAction = Boolean(!error);
 
     return (
       <main className="flex min-h-screen items-center justify-center px-6">
         <GlassCard className="flex w-full max-w-md flex-col items-center gap-4 text-center text-white">
           <h2 className="text-xl font-semibold">{heading}</h2>
-          <p className="text-sm text-white/80">{error}</p>
-          <Button onClick={handleErrorAction}>{actionLabel}</Button>
+          <p className="text-sm text-white/80">{detail}</p>
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
+            <Button
+              onClick={
+                error
+                  ? handleErrorAction
+                  : () =>
+                      setSocketErrorState((prev) =>
+                        prev.roomId === roomId ? { roomId, code: null } : prev
+                      )
+              }
+            >
+              {primaryActionLabel}
+            </Button>
+            {showSecondaryAction ? (
+              <Button variant="ghost" className="border border-white/20" onClick={() => router.push("/rooms")}>Back to rooms</Button>
+            ) : null}
+          </div>
         </GlassCard>
       </main>
     );
@@ -178,7 +217,12 @@ export default function RoomPage() {
   }
 
   return (
-    <SocketProvider roomId={roomId} connect={shouldConnectSocket} identity={connectionIdentity}>
+    <SocketProvider
+      roomId={roomId}
+      connect={shouldConnectSocket && !socketError}
+      identity={connectionIdentity}
+      onJoinError={(code) => setSocketErrorState({ roomId, code: code ?? "ROOM_JOIN_FAILED" })}
+    >
       <RoomExperience
         room={room}
         roomId={roomId}
