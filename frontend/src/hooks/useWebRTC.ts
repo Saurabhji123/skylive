@@ -7,7 +7,6 @@ import { useRtcStore } from "@/store/rtc-store";
 import type {
   SignalingEvent,
   HeartbeatPayload,
-
   ScreenShareState,
   SignalingOffer,
   SignalingAnswer,
@@ -16,6 +15,14 @@ import type {
 } from "@skylive/shared";
 import { ApiClientError, apiFetch } from "@/lib/api-client";
 import { clientLog } from "@/lib/logger";
+import {
+  requestCameraAccess,
+  requestMicrophoneAccess,
+  requestScreenShareAccess,
+  stopMediaStream,
+  monitorPermissionState,
+  queryPermissionState
+} from "@/lib/device-permissions";
 
 interface UseWebRTCOptions {
   roomId: string;
@@ -88,63 +95,41 @@ export function useWebRTC({ roomId, identity }: UseWebRTCOptions): UseWebRTCRetu
   const [reconnectFailed, setReconnectFailed] = useState(false);
   const [roomEndedInfo, setRoomEndedInfo] = useState<RoomEndedPayload | null>(null);
   const [moderationNotice, setModerationNotice] = useState<ModerationNotice | null>(null);
-  const permissionRefs = useRef<{ camera?: PermissionStatus; microphone?: PermissionStatus }>({});
 
   const syncPermissionState = useCallback(
     async (device: "camera" | "microphone") => {
-      if (typeof navigator === "undefined" || !navigator.permissions?.query) {
-        return undefined;
+      const state = await queryPermissionState(device);
+      
+      // Only set valid browser PermissionState values (unknown maps to undefined)
+      const validState = state === "unknown" ? undefined : state;
+
+      if (device === "camera") {
+        rtcStore.setDeviceState({ cameraPermission: validState });
+      } else {
+        rtcStore.setDeviceState({ microphonePermission: validState });
       }
 
-      try {
-        const status = await navigator.permissions.query({ name: device as PermissionName });
-        permissionRefs.current[device] = status;
-
-        const state = status.state as PermissionState;
-        if (device === "camera") {
-          rtcStore.setDeviceState({ cameraPermission: state });
-        } else {
-          rtcStore.setDeviceState({ microphonePermission: state });
-        }
-
-        status.onchange = () => {
-          const nextState = status.state as PermissionState;
-          if (device === "camera") {
-            rtcStore.setDeviceState({ cameraPermission: nextState });
-          } else {
-            rtcStore.setDeviceState({ microphonePermission: nextState });
-          }
-        };
-
-        return state;
-      } catch (error) {
-        clientLog("warn", `Unable to query ${device} permission`, error);
-        if (device === "camera") {
-          rtcStore.setDeviceState({ cameraPermission: undefined });
-        } else {
-          rtcStore.setDeviceState({ microphonePermission: undefined });
-        }
-        return undefined;
-      }
+      return validState;
     },
     [rtcStore]
   );
 
   useEffect(() => {
-    void syncPermissionState("camera");
-    void syncPermissionState("microphone");
+    const cleanupCamera = monitorPermissionState("camera", (state) => {
+      const validState = state === "unknown" ? undefined : state;
+      rtcStore.setDeviceState({ cameraPermission: validState });
+    });
 
-    const snapshot = permissionRefs.current;
+    const cleanupMicrophone = monitorPermissionState("microphone", (state) => {
+      const validState = state === "unknown" ? undefined : state;
+      rtcStore.setDeviceState({ microphonePermission: validState });
+    });
 
     return () => {
-      if (snapshot.camera) {
-        snapshot.camera.onchange = null;
-      }
-      if (snapshot.microphone) {
-        snapshot.microphone.onchange = null;
-      }
+      cleanupCamera();
+      cleanupMicrophone();
     };
-  }, [syncPermissionState]);
+  }, [rtcStore]);
 
   const determineQuality = (latency: number): HeartbeatPayload["quality"] => {
     if (latency < 80) return "excellent";
@@ -448,41 +433,29 @@ export function useWebRTC({ roomId, identity }: UseWebRTCOptions): UseWebRTCRetu
       throw new Error("Camera access is blocked. Enable camera permissions in your browser settings to continue.");
     }
 
-    let stream: MediaStream;
-    try {
-      // Race between getUserMedia and 10 second timeout
-      const streamPromise = navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: false
-      });
+    const result = await requestCameraAccess(10000);
 
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error("Camera permission timeout. Refresh the page and try again.")), 10000);
-      });
-
-      stream = await Promise.race([streamPromise, timeoutPromise]);
-    } catch (error) {
-      if (error instanceof DOMException && (error.name === "NotAllowedError" || error.name === "SecurityError")) {
+    if (!result.success) {
+      if (result.errorCode === "PERMISSION_DENIED") {
         rtcStore.setDeviceState({ cameraPermission: "denied" });
-        throw new Error("Camera permissions are denied. Allow access and try again.");
       }
-
-      if (error instanceof Error) {
-        throw error;
-      }
-
-      throw new Error("Unable to start the camera. Check your device settings and try again.");
+      throw new Error(result.error || "Unable to start the camera. Check your device settings and try again.");
     }
 
+    if (!result.stream) {
+      throw new Error("Camera stream not available.");
+    }
+
+    const stream = result.stream;
     const peer = await ensurePeer();
     const [videoTrack] = stream.getVideoTracks();
     if (!videoTrack) {
-      stream.getTracks().forEach((track) => track.stop());
+      stopMediaStream(stream);
       return;
     }
 
     if (rtcStore.localCameraStream) {
-      rtcStore.localCameraStream.getTracks().forEach((track) => track.stop());
+      stopMediaStream(rtcStore.localCameraStream);
     }
 
     if (cameraSenderRef.current && peerRef.current) {
@@ -506,41 +479,29 @@ export function useWebRTC({ roomId, identity }: UseWebRTCOptions): UseWebRTCRetu
       throw new Error("Microphone access is blocked. Enable the microphone in your browser settings to continue.");
     }
 
-    let stream: MediaStream;
-    try {
-      // Race between getUserMedia and 10 second timeout
-      const streamPromise = navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true },
-        video: false
-      });
+    const result = await requestMicrophoneAccess(10000);
 
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error("Microphone permission timeout. Refresh the page and try again.")), 10000);
-      });
-
-      stream = await Promise.race([streamPromise, timeoutPromise]);
-    } catch (error) {
-      if (error instanceof DOMException && (error.name === "NotAllowedError" || error.name === "SecurityError")) {
+    if (!result.success) {
+      if (result.errorCode === "PERMISSION_DENIED") {
         rtcStore.setDeviceState({ microphonePermission: "denied" });
-        throw new Error("Microphone permissions are denied. Allow access and try again.");
       }
-
-      if (error instanceof Error) {
-        throw error;
-      }
-
-      throw new Error("Unable to start the microphone. Check your input device and try again.");
+      throw new Error(result.error || "Unable to start the microphone. Check your input device and try again.");
     }
 
+    if (!result.stream) {
+      throw new Error("Microphone stream not available.");
+    }
+
+    const stream = result.stream;
     const [track] = stream.getAudioTracks();
     if (!track) {
-      stream.getTracks().forEach((item) => item.stop());
+      stopMediaStream(stream);
       return;
     }
 
     const peer = await ensurePeer();
     if (rtcStore.localMicrophoneStream) {
-      rtcStore.localMicrophoneStream.getTracks().forEach((currentTrack) => currentTrack.stop());
+      stopMediaStream(rtcStore.localMicrophoneStream);
     }
 
     if (micSenderRef.current && peerRef.current) {
@@ -572,7 +533,7 @@ export function useWebRTC({ roomId, identity }: UseWebRTCOptions): UseWebRTCRetu
       localMicTrack.current.stop();
       localMicTrack.current = null;
     }
-    rtcStore.localMicrophoneStream?.getTracks().forEach((track) => track.stop());
+    stopMediaStream(rtcStore.localMicrophoneStream);
     rtcStore.setStreamState({ localMicrophoneStream: undefined });
     setMicMuted(true);
   }, [rtcStore]);
@@ -594,7 +555,7 @@ export function useWebRTC({ roomId, identity }: UseWebRTCOptions): UseWebRTCRetu
       }
     }
     cameraSenderRef.current = null;
-    rtcStore.localCameraStream?.getTracks().forEach((track) => track.stop());
+    stopMediaStream(rtcStore.localCameraStream);
     rtcStore.setStreamState({ localCameraStream: undefined });
     setCameraMuted(true);
   }, [rtcStore]);
@@ -617,8 +578,8 @@ export function useWebRTC({ roomId, identity }: UseWebRTCOptions): UseWebRTCRetu
     }
     screenVideoSenderRef.current = null;
     screenAudioSenderRef.current = null;
-    rtcStore.localScreenStream?.getTracks().forEach((track) => track.stop());
-    rtcStore.localScreenAudioStream?.getTracks().forEach((track) => track.stop());
+    stopMediaStream(rtcStore.localScreenStream);
+    stopMediaStream(rtcStore.localScreenAudioStream);
     rtcStore.setStreamState({ localScreenStream: undefined, localScreenAudioStream: undefined });
     setScreenSharing(false);
     screenSession.current = null;
@@ -636,18 +597,17 @@ export function useWebRTC({ roomId, identity }: UseWebRTCOptions): UseWebRTCRetu
 
   const startScreenShare = useCallback(
     async (source: "screen" | "window" | "tab" = "screen", switchEvents: ScreenShareState["switchEvents"] = []) => {
-      // Race between getDisplayMedia and 15 second timeout (screen share can take longer)
-      const streamPromise = navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: { ideal: 60 }, displaySurface: source },
-        audio: true
-      });
+      const result = await requestScreenShareAccess(15000);
 
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error("Screen share permission timeout. Try again or refresh the page.")), 15000);
-      });
+      if (!result.success) {
+        throw new Error(result.error || "Unable to start screen share.");
+      }
 
-      const stream = await Promise.race([streamPromise, timeoutPromise]);
+      if (!result.stream) {
+        throw new Error("Screen share stream not available.");
+      }
 
+      const stream = result.stream;
       const peer = await ensurePeer();
 
       if (peerRef.current && screenVideoSenderRef.current) {
