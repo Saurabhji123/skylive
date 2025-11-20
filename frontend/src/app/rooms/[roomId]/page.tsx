@@ -42,6 +42,32 @@ const MODERATION_ERROR_MESSAGES: Record<string, string> = {
   NOT_JOINED: "Reconnect to the room before performing host actions."
 };
 
+const SOCKET_ERROR_MESSAGES: Record<string, { heading: string; detail: string; primaryActionLabel?: string; showSecondary?: boolean }> = {
+  ROOM_AT_CAPACITY: {
+    heading: "Room is full",
+    detail: "This screening already has the maximum number of guests. Ask the host to free a seat or raise the limit.",
+    showSecondary: true
+  },
+  SIGNALING_CONNECT_TIMEOUT: {
+    heading: "Signaling timed out",
+    detail: "We couldn’t reach the real-time service in time. Double-check your network and retry.",
+    primaryActionLabel: "Retry join",
+    showSecondary: true
+  },
+  SIGNALING_CONNECT_FAILED: {
+    heading: "Unable to reach signaling",
+    detail: "Socket connection failed multiple times. Make sure the backend signaling server is online and reachable.",
+    primaryActionLabel: "Retry join",
+    showSecondary: true
+  },
+  SIGNALING_RECONNECT_FAILED: {
+    heading: "Connection lost",
+    detail: "We lost the link to this screening. Rejoin to continue watching.",
+    primaryActionLabel: "Rejoin room",
+    showSecondary: true
+  }
+};
+
 export default function RoomPage() {
   const { roomId } = useParams<{ roomId: string }>();
   const searchParams = useSearchParams();
@@ -152,25 +178,21 @@ export default function RoomPage() {
 
   if (error || socketError) {
     const isUnauthorized = errorCode === "UNAUTHORIZED";
-    const isCapacityError = socketError === "ROOM_AT_CAPACITY";
+    const socketCopy = socketError ? SOCKET_ERROR_MESSAGES[socketError] : undefined;
     const heading = error
       ? isUnauthorized
         ? "Authorization required"
         : "Unable to join room"
-      : isCapacityError
-        ? "Room is full"
-        : "Unable to connect";
+      : socketCopy?.heading ?? "Unable to connect";
     const detail = error
       ? error
-      : isCapacityError
-        ? "This screening already has the maximum number of guests. Ask the host to free a seat or raise the limit."
-        : "We couldn’t connect you to this screening. Please retry in a moment.";
+      : socketCopy?.detail ?? "We couldn’t connect you to this screening. Please retry in a moment.";
     const primaryActionLabel = error
       ? isUnauthorized
         ? "Go to login"
         : "Return to dashboard"
-      : "Retry join";
-    const showSecondaryAction = Boolean(!error);
+      : socketCopy?.primaryActionLabel ?? "Retry join";
+    const showSecondaryAction = error ? false : socketCopy?.showSecondary ?? true;
 
     return (
       <main className="flex min-h-screen items-center justify-center px-6">
@@ -191,7 +213,9 @@ export default function RoomPage() {
               {primaryActionLabel}
             </Button>
             {showSecondaryAction ? (
-              <Button variant="ghost" className="border border-white/20" onClick={() => router.push("/rooms")}>Back to rooms</Button>
+              <Button variant="ghost" className="border border-white/20" onClick={() => router.push("/rooms")}>
+                Back to rooms
+              </Button>
             ) : null}
           </div>
         </GlassCard>

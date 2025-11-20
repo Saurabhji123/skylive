@@ -17,6 +17,9 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
   const micAnimationRef = useRef<number | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
+  const cameraRequestIdRef = useRef(0);
+  const micRequestIdRef = useRef(0);
+  const screenRequestIdRef = useRef(0);
 
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [micLevel, setMicLevel] = useState(0);
@@ -103,7 +106,24 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
 
   const startCamera = useCallback(async () => {
     if (cameraStreamRef.current || cameraBusy) return;
+
+    const requestId = cameraRequestIdRef.current + 1;
+    cameraRequestIdRef.current = requestId;
     setCameraBusy(true);
+    let timedOut = false;
+    let timeoutId: number | null = null;
+
+    if (typeof window !== "undefined") {
+      timeoutId = window.setTimeout(() => {
+        timedOut = true;
+        if (cameraRequestIdRef.current === requestId) {
+          setCameraBusy(false);
+          setCameraReady(false);
+          setError("Still waiting for camera permission. Allow access in the address bar and try again.");
+        }
+      }, 12000);
+    }
+
     try {
       setError(null);
       if (!navigator.mediaDevices?.getUserMedia) {
@@ -134,6 +154,11 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
         }
       }
 
+      if (timedOut || cameraRequestIdRef.current !== requestId) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+
       cameraStreamRef.current = stream;
       setCameraStream(stream);
       setCameraReady(true);
@@ -149,6 +174,9 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
         });
       }
     } catch (err) {
+      if (timedOut && cameraRequestIdRef.current === requestId) {
+        return;
+      }
       setCameraReady(false);
       const message = err instanceof Error ? err.message : "Unable to access the camera.";
       setError(message);
@@ -156,7 +184,12 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
       cameraStreamRef.current = null;
       setCameraStream(null);
     } finally {
-      setCameraBusy(false);
+      if (timeoutId !== null && typeof window !== "undefined") {
+        window.clearTimeout(timeoutId);
+      }
+      if (!timedOut && cameraRequestIdRef.current === requestId) {
+        setCameraBusy(false);
+      }
     }
   }, [cameraBusy, stopStream]);
 
@@ -171,7 +204,24 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
 
   const startMicrophone = useCallback(async () => {
     if (micStreamRef.current || micBusy) return;
+
+    const requestId = micRequestIdRef.current + 1;
+    micRequestIdRef.current = requestId;
     setMicBusy(true);
+    let timedOut = false;
+    let timeoutId: number | null = null;
+
+    if (typeof window !== "undefined") {
+      timeoutId = window.setTimeout(() => {
+        timedOut = true;
+        if (micRequestIdRef.current === requestId) {
+          setMicBusy(false);
+          setMicReady(false);
+          setError("Still waiting for microphone permission. Allow access and try again.");
+        }
+      }, 12000);
+    }
+
     try {
       setError(null);
       if (!navigator.mediaDevices?.getUserMedia) {
@@ -202,6 +252,12 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
         }
       }
 
+      if (timedOut || micRequestIdRef.current !== requestId) {
+        stream.getTracks().forEach((track) => track.stop());
+        stopMicAnalyser();
+        return;
+      }
+
       micStreamRef.current = stream;
       setMicReady(true);
       setMicLevel(0.15);
@@ -230,6 +286,9 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
         });
       }
     } catch (err) {
+      if (timedOut && micRequestIdRef.current === requestId) {
+        return;
+      }
       setMicReady(false);
       const message = err instanceof Error ? err.message : "Unable to access the microphone.";
       setError(message);
@@ -238,7 +297,12 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
       setMicLevel(0);
       stopMicAnalyser();
     } finally {
-      setMicBusy(false);
+      if (timeoutId !== null && typeof window !== "undefined") {
+        window.clearTimeout(timeoutId);
+      }
+      if (!timedOut && micRequestIdRef.current === requestId) {
+        setMicBusy(false);
+      }
     }
   }, [micBusy, stopMicAnalyser, stopStream, updateMicLevel]);
 
@@ -254,13 +318,33 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
 
   const startScreenTest = useCallback(async () => {
     if (screenTestActive || screenBusy) return;
+
+    const requestId = screenRequestIdRef.current + 1;
+    screenRequestIdRef.current = requestId;
     setScreenBusy(true);
+    let timedOut = false;
+    let timeoutId: number | null = null;
+    if (typeof window !== "undefined") {
+      timeoutId = window.setTimeout(() => {
+        timedOut = true;
+        if (screenRequestIdRef.current === requestId) {
+          setScreenBusy(false);
+          setScreenReady(false);
+          setError("Screen-share prompt dismissed. Allow the capture window and try again.");
+        }
+      }, 15000);
+    }
+
     try {
       setError(null);
       if (!navigator.mediaDevices?.getDisplayMedia) {
         throw new Error("Screen capture is not supported in this browser.");
       }
       const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: false });
+      if (timedOut || screenRequestIdRef.current !== requestId) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       screenStreamRef.current = stream;
       setScreenTestActive(true);
       setScreenReady(true);
@@ -273,11 +357,19 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
         });
       }
     } catch (err) {
+      if (timedOut && screenRequestIdRef.current === requestId) {
+        return;
+      }
       const message = err instanceof Error ? err.message : "Screen share was blocked. Allow capture to continue.";
       setError(message);
       setScreenReady(false);
     } finally {
-      setScreenBusy(false);
+      if (timeoutId !== null && typeof window !== "undefined") {
+        window.clearTimeout(timeoutId);
+      }
+      if (!timedOut && screenRequestIdRef.current === requestId) {
+        setScreenBusy(false);
+      }
     }
   }, [screenBusy, screenTestActive, stopStream]);
 
