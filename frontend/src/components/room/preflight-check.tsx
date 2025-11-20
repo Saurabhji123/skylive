@@ -6,7 +6,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 
 interface PreflightCheckProps {
   displayName: string;
-  onContinue: () => Promise<void>;
+  onContinue: (options?: { skipDeviceChecks?: boolean }) => Promise<void>;
 }
 
 export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps) {
@@ -62,6 +62,9 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
     setScreenTestActive(false);
     setScreenReady(false);
     setMicLevel(0);
+    setCameraBusy(false);
+    setMicBusy(false);
+    setScreenBusy(false);
   }, [stopMicAnalyser, stopStream]);
 
   useEffect(() => {
@@ -286,39 +289,21 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
     setScreenTestActive(false);
   }, [screenTestActive, stopStream]);
 
-  useEffect(() => {
-    if (isContinuing) {
-      return;
-    }
-    if (!cameraReady && !cameraBusy && !cameraStreamRef.current) {
-      void startCamera();
-    }
-  }, [cameraBusy, cameraReady, isContinuing, startCamera]);
-
-  useEffect(() => {
-    if (isContinuing) {
-      return;
-    }
-    if (!micReady && !micBusy && !micStreamRef.current) {
-      void startMicrophone();
-    }
-  }, [isContinuing, micBusy, micReady, startMicrophone]);
-
-  const handleContinue = async () => {
+  const handleContinue = async (options?: { skipDeviceChecks?: boolean }) => {
     setError(null);
     setIsContinuing(true);
     try {
       cleanup();
-      await onContinue();
-      setIsContinuing(false);
+      await onContinue(options);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start the session. Try again.");
       setIsContinuing(false);
       return;
     }
+    setIsContinuing(false);
   };
 
-  const readyState = useMemo(() => cameraReady && micReady, [cameraReady, micReady]);
+  const readyState = useMemo(() => cameraReady || micReady, [cameraReady, micReady]);
   const micPercent = useMemo(() => Math.min(100, Math.round(micLevel * 100)), [micLevel]);
   const micLevelClass = useMemo(() => {
     if (micPercent > 70) return "bg-emerald-400";
@@ -484,14 +469,30 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-white/50">You can change devices later from the in-room settings.</p>
-          <Button
-            variant="contrast"
-            onClick={() => void handleContinue()}
-            disabled={!readyState || isContinuing}
-            isLoading={isContinuing}
-          >
-            Enter the screening room
-          </Button>
+          <div className="flex w-full flex-col gap-2 sm:flex-row">
+            <Button
+              variant="ghost"
+              className="border border-white/20"
+              onClick={() => void handleContinue({ skipDeviceChecks: true })}
+              disabled={isContinuing}
+            >
+              Skip device setup
+            </Button>
+            <Button
+              variant="contrast"
+              className="flex-1"
+              onClick={() => void handleContinue()}
+              disabled={isContinuing}
+              isLoading={isContinuing}
+            >
+              Enter the screening room
+            </Button>
+          </div>
+          {!readyState ? (
+            <p className="text-xs text-amber-200/80">
+              Camera or microphone permissions are still pending. Allow access or continue without devices and adjust later from the room controls.
+            </p>
+          ) : null}
         </div>
       </GlassCard>
     </main>

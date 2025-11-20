@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import type { AvatarAsset, RoomStats, UserProfile } from "@skylive/shared";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -254,6 +255,7 @@ export default function ProfilePage() {
     return `${resolved}${separator}v=${avatarRevision}`;
   }, [avatarRevision, avatarUrl]);
   const hasAvatar = Boolean(avatarPreviewUrl);
+  const avatarPreviewSrc = hasAvatar && avatarPreviewUrl ? avatarPreviewUrl : undefined;
 
   const handleRefresh = useCallback(() => {
     void refresh();
@@ -445,18 +447,39 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 pb-24 pt-8">
-      <div className="flex flex-col gap-6 text-white lg:flex-row lg:items-stretch">
-        <GlassCard className="flex-1 space-y-6 bg-white/10 p-6 sm:p-8">
-          <header className="flex flex-col gap-3">
-            <p className="text-sm uppercase tracking-[0.4em] text-skylive-cyan/80">Account</p>
-            <h1 className="text-4xl font-semibold">Host control center</h1>
-            <p className="max-w-2xl text-sm text-white/70">
-              Manage your host identity, monitor live session momentum, and keep guests aligned with your brand.
-            </p>
-          </header>
-          {profile ? (
-            <div className="grid gap-4 md:grid-cols-3">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 pb-24 pt-8 sm:px-6">
+      {profile ? (
+        <section className="grid gap-6 text-white lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+          <GlassCard className="flex flex-col gap-8 bg-white/10 p-5 sm:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-4">
+                <div className="relative h-20 w-20 overflow-hidden rounded-full border border-white/20 bg-black/50 sm:h-24 sm:w-24">
+                  {avatarPreviewSrc ? (
+                    <Image src={avatarPreviewSrc} alt="Profile avatar" fill sizes="96px" className="object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-2xl font-semibold text-white/40">
+                      {avatarInitials || "*"}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm uppercase tracking-[0.34em] text-skylive-cyan/70">Host profile</p>
+                  <h1 className="text-3xl font-semibold leading-tight sm:text-4xl">
+                    {profile.displayName}
+                  </h1>
+                  <p className="mt-1 text-sm text-white/60">{profile.email}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Button variant="secondary" onClick={handleRefresh} disabled={isRefreshing} isLoading={isRefreshing}>
+                  Refresh metrics
+                </Button>
+                <Link href="/rooms/create">
+                  <Button variant="contrast">Create room</Button>
+                </Link>
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
               <div className={`rounded-2xl border px-4 py-4 ${statusCard.surface}`}>
                 <p className={`text-xs font-semibold uppercase tracking-[0.28em] ${statusCard.labelClass}`}>Status</p>
                 <p className="mt-2 text-lg font-semibold text-white">{statusCard.title}</p>
@@ -465,42 +488,19 @@ export default function ProfilePage() {
               <div className="rounded-2xl border border-white/12 bg-black/35 px-4 py-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/60">Profile ID</p>
                 <p className="mt-2 text-lg font-semibold text-white">{profile.id.slice(0, 8)}…</p>
-                <p className="text-xs text-white/60">Share this when our support team needs to trace a session.</p>
+                <p className="text-xs text-white/60">Share with support for trace requests.</p>
               </div>
               <div className="rounded-2xl border border-white/12 bg-black/35 px-4 py-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/60">Data freshness</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/60">Last activity pull</p>
                 <p className="mt-2 text-lg font-semibold text-white">{formattedStatsTime}</p>
-                <p className="text-xs text-white/60">
-                  {roomStatsLoading ? "Refreshing metrics…" : roomStatsError ? "Some figures may be out of date." : "Includes profile and room activity."}
-                </p>
+                <p className="text-xs text-white/60">{roomStatsLoading ? "Refreshing metrics…" : roomStatsError ? roomStatsError : "Includes recent rooms & guests."}</p>
               </div>
             </div>
-          ) : null}
-          <div className="flex flex-wrap gap-3">
-            <Button
-              variant="ghost"
-              className="border border-white/20"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              isLoading={isRefreshing}
-            >
-              Refresh data
-            </Button>
-            <Link href="/settings">
-              <Button variant="secondary">Open settings</Button>
-            </Link>
-            <Link href="/rooms/create">
-              <Button variant="ghost" className="border border-white/10">
-                Create new room
-              </Button>
-            </Link>
-          </div>
-        </GlassCard>
-        {profile ? (
-          <GlassCard className="w-full max-w-md space-y-5 p-6">
+          </GlassCard>
+          <GlassCard className="space-y-5 bg-white/10 p-5 sm:p-6">
             <div className="space-y-1">
-              <h2 className="text-xl font-semibold">Activity metrics</h2>
-              <p className="text-sm text-white/60">Live view of your hosting footprint.</p>
+              <h2 className="text-xl font-semibold">Hosting summary</h2>
+              <p className="text-sm text-white/60">Snapshot of your session footprint.</p>
             </div>
             {clusterMetrics.length ? (
               <dl className="grid gap-3 sm:grid-cols-2">
@@ -515,14 +515,12 @@ export default function ProfilePage() {
               <p className="text-sm text-white/60">Metrics will appear after your first hosted session.</p>
             )}
             <div className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-xs text-white/60">
-              <p>
-                Metrics refreshed {formattedStatsTime}. Contact email <span className="text-white/80">{profile.email}</span>
-              </p>
-              {roomStatsError ? <p className="pt-1 text-amber-200/80">{roomStatsError}</p> : null}
+              <p>Metrics refreshed {formattedStatsTime}.</p>
+              <p>Need help? <Link href="/support" className="text-skylive-cyan hover:text-white">Contact support</Link></p>
             </div>
           </GlassCard>
-        ) : null}
-      </div>
+        </section>
+      ) : null}
 
       {isLoading ? (
         <GlassCard className="flex min-h-64 items-center justify-center text-white/70">Loading your profile…</GlassCard>
@@ -536,12 +534,12 @@ export default function ProfilePage() {
       ) : null}
 
       {!isLoading && profile ? (
-        <section className="grid gap-8 lg:grid-cols-[1.8fr,1.2fr]">
-          <GlassCard className="space-y-7">
-            <div className="flex items-center justify-between">
+        <section className="grid gap-8 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+          <GlassCard className="space-y-7 bg-white/10 p-5 sm:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-xl font-semibold text-white">Identity & presence</h2>
-                <p className="text-sm text-white/60">Update what your guests see across every synced device.</p>
+                <p className="text-sm text-white/60">Update what your guests see across every device.</p>
               </div>
               <span className="rounded-full border border-white/10 bg-black/40 px-3 py-1 text-xs text-white/60">Timezone: {timezone}</span>
             </div>
@@ -555,9 +553,8 @@ export default function ProfilePage() {
               />
               <div className="flex flex-col gap-4 rounded-2xl border border-white/15 bg-black/40 px-4 py-4 md:flex-row md:items-center">
                 <div className="relative h-24 w-24 overflow-hidden rounded-full border border-white/20 bg-black/60">
-                  {hasAvatar ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={avatarPreviewUrl} alt="Profile avatar preview" className="h-full w-full object-cover" />
+                  {avatarPreviewSrc ? (
+                    <Image src={avatarPreviewSrc} alt="Profile avatar preview" fill sizes="96px" className="object-cover" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-2xl font-semibold text-white/40">
                       {avatarInitials || "*"}
@@ -637,28 +634,35 @@ export default function ProfilePage() {
                 />
                 <p className="text-xs text-white/50">{bio.length}/280 characters</p>
               </div>
-              <div className="grid gap-1 text-sm text-white/60">
-                <p>
-                  Email <span className="font-semibold text-white/80">{profile.email}</span>
-                </p>
-                <p>Member since {formatDateTime(profile.createdAt)}</p>
-                <p>Last login {formatDateTime(profile.lastLogin)}</p>
+              <div className="grid gap-3 rounded-2xl border border-white/10 bg-black/35 px-4 py-4 text-sm text-white/70 md:grid-cols-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.24em] text-white/50">Email</p>
+                  <p className="mt-1 font-semibold text-white/90 break-all">{profile.email}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.24em] text-white/50">Member since</p>
+                  <p className="mt-1 text-white/80">{formatDateTime(profile.createdAt)}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.24em] text-white/50">Last login</p>
+                  <p className="mt-1 text-white/80">{formatDateTime(profile.lastLogin)}</p>
+                </div>
               </div>
               {success ? <p className="text-sm text-emerald-300">{success}</p> : null}
               {updateError ? <p className="text-sm text-red-300">{updateError}</p> : null}
-              <div className="flex flex-wrap items-center gap-3 pt-2">
+              <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
                 <Button type="submit" size="lg" disabled={!hasChanges} isLoading={saving}>
                   Save profile
                 </Button>
                 <Link href="/support/reset" className="text-sm text-white/60 transition hover:text-white">
-                  Reset password
+                  Manage password
                 </Link>
               </div>
             </form>
           </GlassCard>
 
           <div className="grid gap-6">
-            <GlassCard className="space-y-4">
+            <GlassCard className="space-y-4 bg-white/10 p-5 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-xl font-semibold">Preference snapshot</h2>

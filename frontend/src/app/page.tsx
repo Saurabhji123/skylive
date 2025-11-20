@@ -75,21 +75,21 @@ const onboarding = [
 
 export default function MarketingLanding() {
   return (
-    <main className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-24 px-6 pb-24 pt-32">
+    <main className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-20 px-4 pb-20 pt-24 sm:px-6 lg:gap-24 lg:pb-24 lg:pt-32">
       <section className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-        <div className="space-y-6 text-white">
+        <div className="space-y-6 text-center text-white lg:text-left">
           <span className="inline-flex items-center gap-3 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm uppercase tracking-[0.3em] text-white/60">
             <ClapperboardIcon className="h-5 w-5" />
             <span>Skylive Cinema</span>
           </span>
-          <h1 className="text-4xl font-semibold leading-tight md:text-6xl">
+          <h1 className="text-3xl font-semibold leading-tight sm:text-4xl md:text-6xl">
             Share Your Screen. <span className="text-skylive-cyan">Share The Moment.</span>
           </h1>
-          <p className="max-w-2xl text-lg text-white/70">
+          <p className="mx-auto max-w-2xl text-base text-white/70 sm:text-lg lg:mx-0">
             A browser-only lounge for co-watching, co-commentary, and co-reactions. SKYLIVE CINEMA blends flawless screen
             sharing, dual webcams, and echo-free audio so you can watch and talk together like you are side by side.
           </p>
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-center lg:justify-start lg:gap-4">
             <Link href="/auth/register">
               <Button size="lg" variant="contrast">Start a Watch Room</Button>
             </Link>
@@ -99,16 +99,16 @@ export default function MarketingLanding() {
               </Button>
             </Link>
           </div>
-          <div className="flex flex-wrap gap-8 text-sm text-white/50">
-            <div>
+          <div className="grid w-full gap-4 text-sm text-white/50 sm:grid-cols-3 sm:gap-6 lg:text-left">
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
               <p className="font-semibold text-white">0 downloads</p>
               <p>Works in Chromium + Firefox</p>
             </div>
-            <div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
               <p className="font-semibold text-white">Live audio fences</p>
               <p>Echo-proof mic + screen sound</p>
             </div>
-            <div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
               <p className="font-semibold text-white">Room heartbeat</p>
               <p>Live sync & network monitor</p>
             </div>
@@ -116,7 +116,7 @@ export default function MarketingLanding() {
         </div>
         <div className="relative">
           <div className="pointer-events-none absolute -inset-1 rounded-[28px] bg-skylive-magenta/40 blur-3xl" />
-          <GlassCard className="flex flex-col gap-6 overflow-hidden p-6 sm:p-8">
+          <GlassCard className="flex flex-col gap-6 overflow-hidden p-5 sm:p-6 lg:p-8">
             <header className="flex flex-col gap-3 text-white/65 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs uppercase tracking-[0.34em] text-white/50">Cinematic Preview</p>
@@ -189,46 +189,46 @@ export default function MarketingLanding() {
         </div>
       </section>
 
-      <section className="grid gap-8 md:grid-cols-3">
+      <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {featureHighlights.map((feature) => (
-          <GlassCard key={feature.title} className="space-y-4">
+          <GlassCard key={feature.title} className="space-y-3 p-5 sm:p-6">
             <p className="text-sm uppercase tracking-[0.4em] text-skylive-cyan/80">{feature.accent}</p>
-            <h3 className="text-2xl font-semibold text-white">{feature.title}</h3>
-            <p className="text-base text-white/70">{feature.description}</p>
+            <h3 className="text-xl font-semibold text-white sm:text-2xl">{feature.title}</h3>
+            <p className="text-sm text-white/70 sm:text-base">{feature.description}</p>
           </GlassCard>
         ))}
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+      <section className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
         <div className="space-y-4">
-          <p className="text-sm uppercase tracking-[0.4em] text-skylive-cyan/80">How it works</p>
-          <h2 className="text-3xl font-semibold text-white">Your watch party in three beats</h2>
-          <p className="text-white/70">
+          <p className="text-xs uppercase tracking-[0.4em] text-skylive-cyan/80 sm:text-sm">How it works</p>
+          <h2 className="text-2xl font-semibold text-white sm:text-3xl">Your watch party in three beats</h2>
+          <p className="text-sm text-white/70 sm:text-base">
             Heartbeat sync and adaptive quality keep your reactions aligned. SKYLIVE automatically tunes video bitrate,
             notifies you of jitter, and re-stitches the stream if your network becomes unstable.
           </p>
         </div>
         <div className="grid gap-4">
           {steps.map((step, index) => (
-            <GlassCard key={step.title} className="flex items-start gap-4 bg-white/10">
+            <GlassCard key={step.title} className="flex items-start gap-4 bg-white/10 p-5 sm:p-6">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-skylive-magenta/70 text-lg font-semibold">
                 {index + 1}
               </span>
               <div>
-                <h3 className="text-xl font-semibold text-white">{step.title}</h3>
-                <p className="text-white/70">{step.detail}</p>
+                <h3 className="text-lg font-semibold text-white sm:text-xl">{step.title}</h3>
+                <p className="text-sm text-white/70 sm:text-base">{step.detail}</p>
               </div>
             </GlassCard>
           ))}
         </div>
       </section>
 
-      <section className="rounded-3xl border border-white/10 bg-white/5 p-10 text-white">
+      <section className="rounded-3xl border border-white/10 bg-white/5 p-8 text-white sm:p-10">
         <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
           {onboarding.map((flow) => (
             <div key={flow.title} className="space-y-4">
-              <h3 className="text-2xl font-semibold">{flow.title}</h3>
-              <ol className="space-y-4 text-sm text-white/70">
+              <h3 className="text-xl font-semibold sm:text-2xl">{flow.title}</h3>
+              <ol className="space-y-3 text-sm text-white/70 sm:space-y-4">
                 {flow.steps.map((item, index) => (
                   <li key={item.label} className="flex gap-4 rounded-2xl border border-white/10 bg-black/40 px-4 py-4">
                     <span className="flex h-8 w-8 items-center justify-center rounded-full bg-skylive-cyan/20 text-base font-semibold text-skylive-cyan">
@@ -246,11 +246,11 @@ export default function MarketingLanding() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-12 text-white">
+      <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-10 text-white sm:p-12">
         <div className="absolute -inset-32 bg-linear-to-tr from-skylive-magenta/20 via-skylive-cyan/20 to-transparent blur-3xl" />
         <div className="relative flex flex-col gap-6 text-center">
-          <h2 className="text-4xl font-semibold">Ready for premiere night?</h2>
-          <p className="mx-auto max-w-2xl text-lg text-white/70">
+          <h2 className="text-3xl font-semibold sm:text-4xl">Ready for premiere night?</h2>
+          <p className="mx-auto max-w-2xl text-base text-white/70 sm:text-lg">
             Launch a room, drop a link, and roll film. SKYLIVE CINEMA is built for friends, couples, reviewers, and
             creators who want to talk over every scene without compromising audio or sync.
           </p>

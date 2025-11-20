@@ -207,6 +207,7 @@ function RoomExperience({ room, roomId, username, connectionIdentity, role, init
   const viewerVideoRef = useRef<HTMLVideoElement | null>(null);
   const rtcState = useRtcStore();
   const webrtc = useWebRTC({ roomId, identity: connectionIdentity });
+  const leaveSessionOnUnmount = webrtc.leaveSession;
   const router = useRouter();
   const hasMediaReady = useMemo(
     () => Boolean(rtcState.localCameraStream && rtcState.localMicrophoneStream),
@@ -226,6 +227,12 @@ function RoomExperience({ room, roomId, username, connectionIdentity, role, init
   const [cameraBusy, setCameraBusy] = useState(false);
   const [screenBusy, setScreenBusy] = useState(false);
   const [whiteboardBusy, setWhiteboardBusy] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      void leaveSessionOnUnmount();
+    };
+  }, [leaveSessionOnUnmount]);
 
   const networkStats = useMemo(() => {
     const lastHeartbeat = rtcState.heartbeats.at(-1);
@@ -563,7 +570,12 @@ function RoomExperience({ room, roomId, username, connectionIdentity, role, init
     }).format(new Date(roomEndedInfo.endedAt));
   }, [roomEndedInfo]);
 
-  const handlePreflightContinue = async () => {
+  const handlePreflightContinue = async (options?: { skipDeviceChecks?: boolean }) => {
+    if (options?.skipDeviceChecks) {
+      setPreflightAcknowledged(true);
+      return;
+    }
+
     const tasks: Array<Promise<void>> = [];
     if (!rtcState.localCameraStream) {
       tasks.push(webrtc.startCamera());
@@ -572,7 +584,20 @@ function RoomExperience({ room, roomId, username, connectionIdentity, role, init
       tasks.push(webrtc.startMicrophone());
     }
 
-    await Promise.all(tasks.length ? tasks : [Promise.resolve()]);
+    if (!tasks.length) {
+      setPreflightAcknowledged(true);
+      return;
+    }
+
+    const results = await Promise.allSettled(tasks);
+    const failures = results.filter((result): result is PromiseRejectedResult => result.status === "rejected");
+
+    if (failures.length === tasks.length) {
+      const reason = failures[0]?.reason;
+      const message = reason instanceof Error ? reason.message : "We couldn't access your camera or microphone. Check permissions or skip for now.";
+      throw new Error(message);
+    }
+
     setPreflightAcknowledged(true);
   };
 
