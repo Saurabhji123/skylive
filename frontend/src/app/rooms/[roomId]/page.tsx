@@ -207,7 +207,10 @@ function RoomExperience({ room, roomId, username, connectionIdentity, role, init
   const viewerVideoRef = useRef<HTMLVideoElement | null>(null);
   const rtcState = useRtcStore();
   const webrtc = useWebRTC({ roomId, identity: connectionIdentity });
-  const leaveSessionOnUnmount = webrtc.leaveSession;
+  const leaveSessionRef = useRef(webrtc.leaveSession);
+  useEffect(() => {
+    leaveSessionRef.current = webrtc.leaveSession;
+  }, [webrtc.leaveSession]);
   const router = useRouter();
   const hasMediaReady = useMemo(
     () => Boolean(rtcState.localCameraStream && rtcState.localMicrophoneStream),
@@ -230,9 +233,9 @@ function RoomExperience({ room, roomId, username, connectionIdentity, role, init
 
   useEffect(() => {
     return () => {
-      void leaveSessionOnUnmount();
+      void leaveSessionRef.current();
     };
-  }, [leaveSessionOnUnmount]);
+  }, []);
 
   const networkStats = useMemo(() => {
     const lastHeartbeat = rtcState.heartbeats.at(-1);
