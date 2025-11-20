@@ -82,18 +82,30 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
 
   useEffect(() => {
     const element = videoRef.current;
-    if (!element) return;
+    console.log("📹 Video useEffect triggered:", { element: !!element, cameraStream: !!cameraStream });
+    
+    if (!element) {
+      console.warn("⚠️ Video element ref is null");
+      return;
+    }
 
     if (cameraStream) {
+      console.log("✅ Setting video srcObject to camera stream");
       element.srcObject = cameraStream;
-      element.play().catch(() => undefined);
+      element.play().catch((error) => {
+        console.error("❌ Video play failed:", error);
+      });
     } else if (element.srcObject) {
+      console.log("🔄 Clearing video srcObject");
       element.srcObject = null;
     }
   }, [cameraStream]);
 
   const updateMicLevel = useCallback(function pump() {
-    if (!analyserRef.current) return;
+    if (!analyserRef.current) {
+      console.warn("⚠️ Analyser ref is null in updateMicLevel");
+      return;
+    }
 
     const analyser = analyserRef.current;
     const data = new Uint8Array(analyser.frequencyBinCount);
@@ -104,7 +116,8 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
       sum += normalized * normalized;
     }
     const rms = Math.sqrt(sum / data.length);
-    setMicLevel(Math.min(1, rms * 4));
+    const level = Math.min(1, rms * 4);
+    setMicLevel(level);
     micAnimationRef.current = requestAnimationFrame(pump);
   }, []);
 
@@ -136,15 +149,28 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
       }
 
       // Success - set up the camera stream
+      console.log("✅ Camera access granted:", { 
+        hasStream: !!result.stream, 
+        tracks: result.stream?.getTracks().length 
+      });
+      
       cameraStreamRef.current = result.stream;
       setCameraStream(result.stream);
       setCameraReady(true);
       setError(null);
 
       const [videoTrack] = result.stream.getVideoTracks();
+      console.log("📹 Video track info:", { 
+        hasTrack: !!videoTrack, 
+        enabled: videoTrack?.enabled,
+        readyState: videoTrack?.readyState,
+        settings: videoTrack?.getSettings()
+      });
+      
       if (videoTrack) {
         videoTrack.addEventListener("ended", () => {
           if (cameraStreamRef.current === result.stream) {
+            console.log("🔴 Camera track ended");
             cameraStreamRef.current = null;
             setCameraStream(null);
             setCameraReady(false);
@@ -210,26 +236,60 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
       }
 
       // Success - set up the microphone stream
+      console.log("✅ Microphone access granted:", { 
+        hasStream: !!result.stream, 
+        tracks: result.stream?.getTracks().length 
+      });
+      
       micStreamRef.current = result.stream;
       setMicReady(true);
       setMicLevel(0.15);
       setError(null);
 
       stopMicAnalyser();
+      console.log("🎤 Creating AudioContext and Analyser...");
       const audioContext = new AudioContext();
       audioContextRef.current = audioContext;
-      await audioContext.resume().catch(() => undefined);
+      
+      // Ensure AudioContext is running
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
+      console.log("🎤 AudioContext state after resume:", audioContext.state);
+      
       const analyser = audioContext.createAnalyser();
       analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.8;
+      console.log("🎤 Analyser created:", { fftSize: analyser.fftSize, frequencyBinCount: analyser.frequencyBinCount });
+      
       const source = audioContext.createMediaStreamSource(result.stream);
       source.connect(analyser);
       analyserRef.current = analyser;
-      micAnimationRef.current = requestAnimationFrame(updateMicLevel);
+      console.log("🎤 MediaStreamSource connected to Analyser");
+      
+      // Start the animation loop
+      const startAnimationLoop = () => {
+        if (analyserRef.current && micRequestIdRef.current === requestId) {
+          micAnimationRef.current = requestAnimationFrame(updateMicLevel);
+          console.log("🎤 Animation frame started:", micAnimationRef.current);
+        }
+      };
+      
+      // Start immediately
+      startAnimationLoop();
 
       const [audioTrack] = result.stream.getAudioTracks();
+      console.log("🎤 Audio track info:", { 
+        hasTrack: !!audioTrack, 
+        enabled: audioTrack?.enabled,
+        readyState: audioTrack?.readyState,
+        settings: audioTrack?.getSettings()
+      });
+      
       if (audioTrack) {
         audioTrack.addEventListener("ended", () => {
           if (micStreamRef.current === result.stream) {
+            console.log("🔴 Microphone track ended");
             stopStream(micStreamRef.current);
             micStreamRef.current = null;
             setMicReady(false);
@@ -297,15 +357,28 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
       }
 
       // Success - set up the screen share stream
+      console.log("✅ Screen share access granted:", { 
+        hasStream: !!result.stream, 
+        tracks: result.stream?.getTracks().length 
+      });
+      
       screenStreamRef.current = result.stream;
       setScreenTestActive(true);
       setScreenReady(true);
       setError(null);
 
       const [track] = result.stream.getVideoTracks();
+      console.log("🖥️ Screen track info:", { 
+        hasTrack: !!track, 
+        enabled: track?.enabled,
+        readyState: track?.readyState,
+        settings: track?.getSettings()
+      });
+      
       if (track) {
         track.addEventListener("ended", () => {
           if (screenStreamRef.current === result.stream) {
+            console.log("🔴 Screen share track ended");
             stopStream(screenStreamRef.current);
             screenStreamRef.current = null;
             setScreenTestActive(false);
@@ -421,14 +494,20 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
                 </Button>
               </div>
             </div>
-            <div className="aspect-video overflow-hidden rounded-2xl border border-white/10 bg-black/60">
-              {cameraReady && cameraStream ? (
-                <video ref={videoRef} className="h-full w-full object-cover" autoPlay muted playsInline />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-sm text-white/50">
+            <div className="aspect-video overflow-hidden rounded-2xl border border-white/10 bg-black/60 relative">
+              <video 
+                ref={videoRef} 
+                className="h-full w-full object-cover" 
+                autoPlay 
+                muted 
+                playsInline
+                style={{ display: cameraReady && cameraStream ? 'block' : 'none' }}
+              />
+              {!cameraReady || !cameraStream ? (
+                <div className="absolute inset-0 flex h-full w-full items-center justify-center text-sm text-white/50 bg-black/60">
                   Camera is currently off
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
 
