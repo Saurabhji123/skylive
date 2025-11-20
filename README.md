@@ -29,6 +29,13 @@ Repository layout for reference:
 - Update CORS origins, secure cookies, and Socket.IO endpoints whenever domains or infrastructure shift.
 - Run the backend with hardened TLS termination and monitor TURN usage to prevent abuse.
 
+## Production Deployment
+
+**Current Production URLs:**
+- Frontend: https://skylive-cinema.vercel.app
+- Backend: https://roduction.up.railway.app
+
+
 ## Operational Guidelines
 
 - Follow internal runbooks for scaling, log redaction, and incident response. Never expose customer content in debug logs or analytics exports.

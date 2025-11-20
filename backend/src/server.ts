@@ -62,6 +62,19 @@ async function bootstrap(): Promise<void> {
     res.status(statusCode).json({ status: databaseHealthy ? "ok" : "degraded", timestamp: Date.now(), database: databaseHealthy ? "connected" : "disconnected" });
   });
 
+  app.get("/", (_req, res) => {
+    res.json({
+      name: "SKYLIVE CINEMA Backend",
+      version: "1.0.0",
+      status: "operational",
+      endpoints: {
+        health: "/health",
+        api: "/api",
+        socket: "ws://<host>/"
+      }
+    });
+  });
+
   app.use("/api", createApiRouter());
   app.use(errorHandler);
 

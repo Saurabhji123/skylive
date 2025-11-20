@@ -50,9 +50,9 @@ export default function RootLayout({
           <div className="fixed inset-0 -z-10 opacity-40" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, rgba(51,224,255,0.25), transparent 45%)" }} />
           <SessionExpiredDialog />
           <Navbar />
-          <main className="min-h-screen pt-24 text-white">
+          <div className="relative pt-24">
             {children}
-          </main>
+          </div>
           <Footer />
         </GoogleAuthProvider>
       </body>

@@ -40,14 +40,14 @@ export function LinkButton({ href, subtle = false, className, children, hideArro
 
   if (isExternal) {
     return (
-      <a href={href} className={styles} {...props}>
+      <a href={href} className={styles} target="_blank" rel="noopener noreferrer" {...props}>
         {content}
       </a>
     );
   }
 
   return (
-    <Link href={href} className={styles} {...props}>
+    <Link href={href} className={styles} prefetch={true} {...props}>
       {content}
     </Link>
   );

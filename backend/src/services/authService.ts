@@ -178,7 +178,7 @@ export async function authenticateWithGoogle(
     });
 
     const payload = ticket.getPayload();
-    if (!payload || !payload.email) {
+    if (!payload?.email) {
       throw new Error("Google account is missing an email address");
     }
 

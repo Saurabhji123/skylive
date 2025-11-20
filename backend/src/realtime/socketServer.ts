@@ -649,7 +649,7 @@ function normalizeStroke(input: WhiteboardStroke | undefined, roomId: string, us
   const size = clamp(rawSize, 1, 36);
   const color = typeof input?.color === "string" && input.color?.length ? input.color : "#ffffff";
   const sourcePoints: WhiteboardStroke["points"] = Array.isArray(input?.points)
-    ? (input.points as WhiteboardStroke["points"])
+    ? input.points
     : [];
   const points = sourcePoints
     .map((point: WhiteboardStroke["points"][number]) => ({
