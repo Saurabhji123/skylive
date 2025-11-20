@@ -110,18 +110,9 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
     const requestId = cameraRequestIdRef.current + 1;
     cameraRequestIdRef.current = requestId;
     setCameraBusy(true);
-    let timeoutId: number | null = null;
-
-    if (typeof window !== "undefined") {
-      timeoutId = window.setTimeout(() => {
-        if (cameraRequestIdRef.current === requestId && cameraBusy) {
-          setError("Still waiting for camera permission. Allow access in the address bar and try again.");
-        }
-      }, 12000);
-    }
+    setError(null);
 
     try {
-      setError(null);
       if (!navigator.mediaDevices?.getUserMedia) {
         throw new Error("Camera access is not supported in this browser.");
       }
@@ -136,19 +127,24 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
         audio: false
       };
 
-      let stream: MediaStream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia(preferredConstraints);
-      } catch (error) {
-        const domError = error as DOMException;
-        if (domError?.name === "OverconstrainedError" || domError?.name === "NotReadableError") {
-          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-        } else if (domError?.name === "NotAllowedError") {
-          throw new Error("Camera permission denied. Allow access to continue.");
-        } else {
+      // Race between getUserMedia and 10 second timeout
+      const streamPromise = (async () => {
+        try {
+          return await navigator.mediaDevices.getUserMedia(preferredConstraints);
+        } catch (error) {
+          const domError = error as DOMException;
+          if (domError?.name === "OverconstrainedError" || domError?.name === "NotReadableError") {
+            return await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          }
           throw error;
         }
-      }
+      })();
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Camera permission timeout. Click Enable again or refresh the page.")), 10000);
+      });
+
+      const stream = await Promise.race([streamPromise, timeoutPromise]);
 
       if (cameraRequestIdRef.current !== requestId) {
         stream.getTracks().forEach((track) => track.stop());
@@ -175,15 +171,18 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
         return;
       }
       setCameraReady(false);
-      const message = err instanceof Error ? err.message : "Unable to access the camera.";
+      const domError = err as DOMException;
+      let message = "Unable to access the camera.";
+      if (domError?.name === "NotAllowedError") {
+        message = "Camera permission denied. Check your browser settings and try again.";
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
       setError(message);
       stopStream(cameraStreamRef.current);
       cameraStreamRef.current = null;
       setCameraStream(null);
     } finally {
-      if (timeoutId !== null && typeof window !== "undefined") {
-        window.clearTimeout(timeoutId);
-      }
       if (cameraRequestIdRef.current === requestId) {
         setCameraBusy(false);
       }
@@ -205,18 +204,9 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
     const requestId = micRequestIdRef.current + 1;
     micRequestIdRef.current = requestId;
     setMicBusy(true);
-    let timeoutId: number | null = null;
-
-    if (typeof window !== "undefined") {
-      timeoutId = window.setTimeout(() => {
-        if (micRequestIdRef.current === requestId && micBusy) {
-          setError("Still waiting for microphone permission. Allow access and try again.");
-        }
-      }, 12000);
-    }
+    setError(null);
 
     try {
-      setError(null);
       if (!navigator.mediaDevices?.getUserMedia) {
         throw new Error("Microphone access is not supported in this browser.");
       }
@@ -231,19 +221,24 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
         video: false
       };
 
-      let stream: MediaStream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia(preferredConstraints);
-      } catch (error) {
-        const domError = error as DOMException;
-        if (domError?.name === "OverconstrainedError" || domError?.name === "NotReadableError") {
-          stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        } else if (domError?.name === "NotAllowedError") {
-          throw new Error("Microphone permission denied. Allow access to test audio.");
-        } else {
+      // Race between getUserMedia and 10 second timeout
+      const streamPromise = (async () => {
+        try {
+          return await navigator.mediaDevices.getUserMedia(preferredConstraints);
+        } catch (error) {
+          const domError = error as DOMException;
+          if (domError?.name === "OverconstrainedError" || domError?.name === "NotReadableError") {
+            return await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+          }
           throw error;
         }
-      }
+      })();
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Microphone permission timeout. Click Enable again or refresh the page.")), 10000);
+      });
+
+      const stream = await Promise.race([streamPromise, timeoutPromise]);
 
       if (micRequestIdRef.current !== requestId) {
         stream.getTracks().forEach((track) => track.stop());
@@ -284,16 +279,19 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
         return;
       }
       setMicReady(false);
-      const message = err instanceof Error ? err.message : "Unable to access the microphone.";
+      const domError = err as DOMException;
+      let message = "Unable to access the microphone.";
+      if (domError?.name === "NotAllowedError") {
+        message = "Microphone permission denied. Check your browser settings and try again.";
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
       setError(message);
       stopStream(micStreamRef.current);
       micStreamRef.current = null;
       setMicLevel(0);
       stopMicAnalyser();
     } finally {
-      if (timeoutId !== null && typeof window !== "undefined") {
-        window.clearTimeout(timeoutId);
-      }
       if (micRequestIdRef.current === requestId) {
         setMicBusy(false);
       }
@@ -316,29 +314,35 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
     const requestId = screenRequestIdRef.current + 1;
     screenRequestIdRef.current = requestId;
     setScreenBusy(true);
-    let timeoutId: number | null = null;
-    if (typeof window !== "undefined") {
-      timeoutId = window.setTimeout(() => {
-        if (screenRequestIdRef.current === requestId && screenBusy) {
-          setError("Screen-share prompt dismissed. Allow the capture window and try again.");
-        }
-      }, 15000);
-    }
+    setError(null);
 
     try {
-      setError(null);
       if (!navigator.mediaDevices?.getDisplayMedia) {
         throw new Error("Screen capture is not supported in this browser.");
       }
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: false });
+
+      // Race between getDisplayMedia and 15 second timeout (screen share can take longer)
+      const streamPromise = navigator.mediaDevices.getDisplayMedia({ 
+        video: { frameRate: 30 }, 
+        audio: false 
+      });
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Screen-share prompt dismissed. Allow the capture window and try again.")), 15000);
+      });
+
+      const stream = await Promise.race([streamPromise, timeoutPromise]);
+
       if (screenRequestIdRef.current !== requestId) {
         stream.getTracks().forEach((track) => track.stop());
         return;
       }
+
       screenStreamRef.current = stream;
       setScreenTestActive(true);
       setScreenReady(true);
       setError(null);
+
       const [track] = stream.getVideoTracks();
       if (track) {
         track.addEventListener("ended", () => {
@@ -355,9 +359,6 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
       setError(message);
       setScreenReady(false);
     } finally {
-      if (timeoutId !== null && typeof window !== "undefined") {
-        window.clearTimeout(timeoutId);
-      }
       if (screenRequestIdRef.current === requestId) {
         setScreenBusy(false);
       }

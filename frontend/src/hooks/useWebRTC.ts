@@ -450,14 +450,25 @@ export function useWebRTC({ roomId, identity }: UseWebRTCOptions): UseWebRTCRetu
 
     let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
+      // Race between getUserMedia and 10 second timeout
+      const streamPromise = navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false
       });
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Camera permission timeout. Refresh the page and try again.")), 10000);
+      });
+
+      stream = await Promise.race([streamPromise, timeoutPromise]);
     } catch (error) {
       if (error instanceof DOMException && (error.name === "NotAllowedError" || error.name === "SecurityError")) {
         rtcStore.setDeviceState({ cameraPermission: "denied" });
         throw new Error("Camera permissions are denied. Allow access and try again.");
+      }
+
+      if (error instanceof Error) {
+        throw error;
       }
 
       throw new Error("Unable to start the camera. Check your device settings and try again.");
@@ -497,14 +508,25 @@ export function useWebRTC({ roomId, identity }: UseWebRTCOptions): UseWebRTCRetu
 
     let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
+      // Race between getUserMedia and 10 second timeout
+      const streamPromise = navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true },
         video: false
       });
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Microphone permission timeout. Refresh the page and try again.")), 10000);
+      });
+
+      stream = await Promise.race([streamPromise, timeoutPromise]);
     } catch (error) {
       if (error instanceof DOMException && (error.name === "NotAllowedError" || error.name === "SecurityError")) {
         rtcStore.setDeviceState({ microphonePermission: "denied" });
         throw new Error("Microphone permissions are denied. Allow access and try again.");
+      }
+
+      if (error instanceof Error) {
+        throw error;
       }
 
       throw new Error("Unable to start the microphone. Check your input device and try again.");
@@ -614,10 +636,17 @@ export function useWebRTC({ roomId, identity }: UseWebRTCOptions): UseWebRTCRetu
 
   const startScreenShare = useCallback(
     async (source: "screen" | "window" | "tab" = "screen", switchEvents: ScreenShareState["switchEvents"] = []) => {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
+      // Race between getDisplayMedia and 15 second timeout (screen share can take longer)
+      const streamPromise = navigator.mediaDevices.getDisplayMedia({
         video: { frameRate: { ideal: 60 }, displaySurface: source },
         audio: true
       });
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Screen share permission timeout. Try again or refresh the page.")), 15000);
+      });
+
+      const stream = await Promise.race([streamPromise, timeoutPromise]);
 
       const peer = await ensurePeer();
 
