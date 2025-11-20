@@ -110,15 +110,11 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
     const requestId = cameraRequestIdRef.current + 1;
     cameraRequestIdRef.current = requestId;
     setCameraBusy(true);
-    let timedOut = false;
     let timeoutId: number | null = null;
 
     if (typeof window !== "undefined") {
       timeoutId = window.setTimeout(() => {
-        timedOut = true;
-        if (cameraRequestIdRef.current === requestId) {
-          setCameraBusy(false);
-          setCameraReady(false);
+        if (cameraRequestIdRef.current === requestId && cameraBusy) {
           setError("Still waiting for camera permission. Allow access in the address bar and try again.");
         }
       }, 12000);
@@ -154,7 +150,7 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
         }
       }
 
-      if (timedOut || cameraRequestIdRef.current !== requestId) {
+      if (cameraRequestIdRef.current !== requestId) {
         stream.getTracks().forEach((track) => track.stop());
         return;
       }
@@ -162,6 +158,7 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
       cameraStreamRef.current = stream;
       setCameraStream(stream);
       setCameraReady(true);
+      setError(null);
 
       const [videoTrack] = stream.getVideoTracks();
       if (videoTrack) {
@@ -174,7 +171,7 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
         });
       }
     } catch (err) {
-      if (timedOut && cameraRequestIdRef.current === requestId) {
+      if (cameraRequestIdRef.current !== requestId) {
         return;
       }
       setCameraReady(false);
@@ -187,7 +184,7 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
       if (timeoutId !== null && typeof window !== "undefined") {
         window.clearTimeout(timeoutId);
       }
-      if (!timedOut && cameraRequestIdRef.current === requestId) {
+      if (cameraRequestIdRef.current === requestId) {
         setCameraBusy(false);
       }
     }
@@ -208,15 +205,11 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
     const requestId = micRequestIdRef.current + 1;
     micRequestIdRef.current = requestId;
     setMicBusy(true);
-    let timedOut = false;
     let timeoutId: number | null = null;
 
     if (typeof window !== "undefined") {
       timeoutId = window.setTimeout(() => {
-        timedOut = true;
-        if (micRequestIdRef.current === requestId) {
-          setMicBusy(false);
-          setMicReady(false);
+        if (micRequestIdRef.current === requestId && micBusy) {
           setError("Still waiting for microphone permission. Allow access and try again.");
         }
       }, 12000);
@@ -252,7 +245,7 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
         }
       }
 
-      if (timedOut || micRequestIdRef.current !== requestId) {
+      if (micRequestIdRef.current !== requestId) {
         stream.getTracks().forEach((track) => track.stop());
         stopMicAnalyser();
         return;
@@ -261,6 +254,7 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
       micStreamRef.current = stream;
       setMicReady(true);
       setMicLevel(0.15);
+      setError(null);
 
       stopMicAnalyser();
       const audioContext = new AudioContext();
@@ -286,7 +280,7 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
         });
       }
     } catch (err) {
-      if (timedOut && micRequestIdRef.current === requestId) {
+      if (micRequestIdRef.current !== requestId) {
         return;
       }
       setMicReady(false);
@@ -300,7 +294,7 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
       if (timeoutId !== null && typeof window !== "undefined") {
         window.clearTimeout(timeoutId);
       }
-      if (!timedOut && micRequestIdRef.current === requestId) {
+      if (micRequestIdRef.current === requestId) {
         setMicBusy(false);
       }
     }
@@ -322,14 +316,10 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
     const requestId = screenRequestIdRef.current + 1;
     screenRequestIdRef.current = requestId;
     setScreenBusy(true);
-    let timedOut = false;
     let timeoutId: number | null = null;
     if (typeof window !== "undefined") {
       timeoutId = window.setTimeout(() => {
-        timedOut = true;
-        if (screenRequestIdRef.current === requestId) {
-          setScreenBusy(false);
-          setScreenReady(false);
+        if (screenRequestIdRef.current === requestId && screenBusy) {
           setError("Screen-share prompt dismissed. Allow the capture window and try again.");
         }
       }, 15000);
@@ -341,13 +331,14 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
         throw new Error("Screen capture is not supported in this browser.");
       }
       const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: false });
-      if (timedOut || screenRequestIdRef.current !== requestId) {
+      if (screenRequestIdRef.current !== requestId) {
         stream.getTracks().forEach((track) => track.stop());
         return;
       }
       screenStreamRef.current = stream;
       setScreenTestActive(true);
       setScreenReady(true);
+      setError(null);
       const [track] = stream.getVideoTracks();
       if (track) {
         track.addEventListener("ended", () => {
@@ -357,7 +348,7 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
         });
       }
     } catch (err) {
-      if (timedOut && screenRequestIdRef.current === requestId) {
+      if (screenRequestIdRef.current !== requestId) {
         return;
       }
       const message = err instanceof Error ? err.message : "Screen share was blocked. Allow capture to continue.";
@@ -367,7 +358,7 @@ export function PreflightCheck({ displayName, onContinue }: PreflightCheckProps)
       if (timeoutId !== null && typeof window !== "undefined") {
         window.clearTimeout(timeoutId);
       }
-      if (!timedOut && screenRequestIdRef.current === requestId) {
+      if (screenRequestIdRef.current === requestId) {
         setScreenBusy(false);
       }
     }
